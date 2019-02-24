@@ -14,5 +14,5 @@ Copy the file db.example.cfg to db.cfg and customise it to use your own database
 ## Running
 
 ```bash
-python plates_to_xlsx.py 2018 01 month
+python plates_to_xlsx.py month 2018 01
 ```

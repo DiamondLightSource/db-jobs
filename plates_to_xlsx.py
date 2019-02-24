@@ -7,7 +7,7 @@ import xlsxwriter
 import pytds
 import logging
 from logging.handlers import RotatingFileHandler
-import datetime
+from datetime import datetime
 import sys
 
 # Trick to make it work with both Python 2 and 3:
@@ -25,9 +25,15 @@ hdlr.setFormatter(formatter)
 logging.getLogger().addHandler(hdlr)
 
 # Get input parameters 
-start_year = sys.argv[1]  # e.g. 2018
-start_month = sys.argv[2] # e.g. 02 
-interval = sys.argv[3]    # accepted values: year or month
+interval = 'month'
+start_year = datetime.now().year
+start_month = datetime.now().month
+if len(sys.argv) > 1:
+    interval = sys.argv[1]    # accepted values: year or month
+if len(sys.argv) > 2:
+    start_year = sys.argv[2]  # e.g. 2018
+if len(sys.argv) > 3:
+    start_month = sys.argv[3] # e.g. 02
 start_date = '%s/%s/01' % (start_year, start_month)
 
 # Query to retrieve all plates registered and the number of times each has been imaged, within the reporting time frame:
