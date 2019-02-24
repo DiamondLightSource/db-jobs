@@ -1,7 +1,12 @@
+#
+# Copyright 2019 Karl Levik
+#
+
 # Our imports:
 import xlsxwriter
 import pytds
 import logging
+from logging.handlers import RotatingFileHandler
 import datetime
 import sys
 
@@ -11,14 +16,18 @@ try:
 except ImportError:
   import ConfigParser as configparser
 
-# Remember to install the packages not in the standard lib:
-# pip install --user XlsxWriter
-# pip install --user python-tds
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('* %(asctime)s [id=%(thread)d] <%(levelname)s> %(message)s')
+hdlr = RotatingFileHandler(filename='plates_to_xslx.log', maxBytes=1000000, backupCount=10)
+hdlr.setFormatter(formatter)
+logging.getLogger().addHandler(hdlr)
 
-# Get input parameters - run e.g.: python db_plates_to_xlsx.py 2018 01 month
-start_year = sys.argv[1]
-start_month = sys.argv[2]
-interval = sys.argv[3] # 'year' or 'month'
+# Get input parameters 
+start_year = sys.argv[1]  # e.g. 2018
+start_month = sys.argv[2] # e.g. 02 
+interval = sys.argv[3]    # accepted values: year or month
 start_date = '%s/%s/01' % (start_year, start_month)
 
 # Query to retrieve all plates registered and the number of times each has been imaged, within the reporting time frame:
@@ -57,11 +66,15 @@ ORDER BY pl.DateDispensed ASC
 configuration_file = 'db.cfg'
 config = configparser.RawConfigParser(allow_no_value=True)
 if not config.read(configuration_file):
-    raise AttributeError('No configuration found at %s' % configuration_file)
+    msg = 'No configuration found at %s' % configuration_file
+    logging.getLogger().exception(msg)
+    raise AttributeError(msg)
 
 credentials = None
 if not config.has_section('RockMakerDB'):
-    sys.exit(1)
+    msg = 'No "RockMakerDB" section in configuration found at %s' % configuration_file
+    logging.getLogger().exception(msg)
+    raise AttributeError(msg)
 else:
     credentials = dict(config.items('RockMakerDB'))
 
