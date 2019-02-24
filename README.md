@@ -1,12 +1,18 @@
 # Scripts to generate reports from a RockMaker databases
 
-## How to install and run?
+## Installing dependencies
 
 ```bash
 pip install --user XlsxWriter
 pip install --user python-tds
 ```
 
+## Configuration
+
+Copy the file db.example.cfg to db.cfg and customise it to use your own database credentials.
+
+## Running
+
 ```bash
-python db_plates_to_xlsx.py 2018 01 month
+python plates_to_xlsx.py 2018 01 month
 ```
