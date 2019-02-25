@@ -5,6 +5,7 @@
 # Our imports:
 import xlsxwriter
 import pytds
+import smtplib
 import logging
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
@@ -84,12 +85,14 @@ if not config.has_section('RockMakerDB'):
 else:
     credentials = dict(config.items('RockMakerDB'))
 
+filename = None
 # Connect to the database, create a cursor, actually execute the query, and write the results to an xlsx file:
 with pytds.connect(**credentials) as conn:
     with conn.cursor() as c:
         c.execute(sql)
 
-        workbook = xlsxwriter.Workbook('report_%s_%s-%s.xlsx' % (interval, start_year, start_month))
+        filename = 'report_%s_%s-%s.xlsx' % (interval, start_year, start_month)
+        workbook = xlsxwriter.Workbook(filename)
         worksheet = workbook.add_worksheet()
 
         i = 0
@@ -109,4 +112,20 @@ with pytds.connect(**credentials) as conn:
                 j = j + 1
 
         workbook.close()
+        print('Success - report available at %s' % filename)
 
+if filename is not None:
+    try:
+        server = smtplib.SMTP('localhost', 25) # or 587?
+
+        # Next, log in to the server
+        #server.login("youremailusername", "password")
+
+        # Send the mail
+        msg = """RockMaker plate report for %s starting %s
+Please find the report attached.""" % (interval, start_month)
+        server.sendmail("no-reply@diamond.ac.uk", "karl.levik@diamond.ac.uk", msg)
+    except:
+        err_msg = "Failed to send email"
+        logging.getLogger().exception(err_msg)
+        print(err_msg)
