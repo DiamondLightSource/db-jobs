@@ -145,8 +145,8 @@ with pytds.connect(**credentials) as conn:
 if filepath is not None and sender is not None and recipients is not None:
     message = MIMEMultipart()
     message['Subject'] = 'RockMaker plate report for %s starting %s' % (interval, start_date)
-    message['From'] = 'no-reply@diamond.ac.uk'
-    message['To'] = 'karl.levik@diamond.ac.uk'
+    message['From'] = sender
+    message['To'] = recipients
     body = 'Please find the report attached.'
     message.attach(MIMEText(body, 'plain'))
 
@@ -169,7 +169,10 @@ if filepath is not None and sender is not None and recipients is not None:
         #server.login('youremailusername', 'password')
 
         # Send the mail
-        server.sendmail(sender, recipients, text)
+        recipients_list = []
+        for i in recipients.split(','):
+            recipients_list.append(i.strip())
+        server.sendmail(sender, recipients_list, text)
     except:
         err_msg = 'Failed to send email'
         logging.getLogger().exception(err_msg)
