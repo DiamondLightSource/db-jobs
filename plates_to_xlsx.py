@@ -12,7 +12,7 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 import logging
 from logging.handlers import RotatingFileHandler
-from datetime import datetime
+from datetime import datetime, timedelta, date
 import sys, os
 
 # Trick to make it work with both Python 2 and 3:
@@ -29,12 +29,21 @@ hdlr = RotatingFileHandler(filename='/tmp/plates_to_xlsx.log', maxBytes=1000000,
 hdlr.setFormatter(formatter)
 logging.getLogger().addHandler(hdlr)
 
-# Get input parameters
+# Get input parameters, otherwise use default values
 interval = 'month'
-start_year = datetime.now().year
-start_month = datetime.now().month
+
+today = date.today()
+first = today.replace(day=1)
+prev_date = first - timedelta(days=1)
+
+start_year = prev_date.year
+start_month = prev_date.month
 if len(sys.argv) > 1:
-    interval = sys.argv[1]    # accepted values: year or month
+    interval = sys.argv[1]
+    if interval not in ('month', 'year'):
+        err_msg = 'interval must be "month" or "year"'
+        logging.getLogger().error(err_msg)
+        raise AttributeError(err_msg)
 if len(sys.argv) > 2:
     start_year = sys.argv[2]  # e.g. 2018
 if len(sys.argv) > 3:
@@ -129,7 +138,7 @@ with pytds.connect(**credentials) as conn:
                 j = j + 1
 
         workbook.close()
-        msg = 'Success - report available at %s' % filepath
+        msg = 'Report available at %s' % filepath
         print(msg)
         logging.getLogger().debug(msg)
 
@@ -166,4 +175,4 @@ if filepath is not None and sender is not None and recipients is not None:
         logging.getLogger().exception(err_msg)
         print(err_msg)
 
-    logging.getLogger().debug('Success - email sent')
+    logging.getLogger().debug('Email sent')
