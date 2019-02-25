@@ -13,7 +13,7 @@ from email.mime.multipart import MIMEMultipart
 import logging
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
-import sys
+import sys, os
 
 # Trick to make it work with both Python 2 and 3:
 try:
@@ -107,7 +107,9 @@ with pytds.connect(**credentials) as conn:
         c.execute(sql)
 
         filename = 'report_%s_%s-%s.xlsx' % (interval, start_year, start_month)
-        workbook = xlsxwriter.Workbook(filename)
+        filedir = '/tmp'
+        filepath = os.path.join(filedir, filename)
+        workbook = xlsxwriter.Workbook(filepath)
         worksheet = workbook.add_worksheet()
 
         i = 0
@@ -127,9 +129,11 @@ with pytds.connect(**credentials) as conn:
                 j = j + 1
 
         workbook.close()
-        print('Success - report available at %s' % filename)
+        msg = 'Success - report available at %s' % filepath
+        print(msg)
+        logging.getLogger().debug(msg)
 
-if filename is not None and sender is not None and recipients is not None:
+if filepath is not None and sender is not None and recipients is not None:
     message = MIMEMultipart()
     message['Subject'] = 'RockMaker plate report for %s starting %s' % (interval, start_date)
     message['From'] = 'no-reply@diamond.ac.uk'
@@ -137,7 +141,7 @@ if filename is not None and sender is not None and recipients is not None:
     body = 'Please find the report attached.'
     message.attach(MIMEText(body, 'plain'))
 
-    with open(filename, 'rb') as attachment:
+    with open(filepath, 'rb') as attachment:
         part = MIMEBase('application', 'octet-stream')
         part.set_payload(attachment.read())
 
@@ -161,3 +165,5 @@ if filename is not None and sender is not None and recipients is not None:
         err_msg = 'Failed to send email'
         logging.getLogger().exception(err_msg)
         print(err_msg)
+
+    logging.getLogger().debug('Success - email sent')
