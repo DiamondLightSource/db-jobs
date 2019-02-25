@@ -70,8 +70,8 @@ FROM Plate pl
     INNER JOIN TreeNode tn4 ON tn3.ParentID = tn4.ID
     LEFT OUTER JOIN ExperimentPlate ep ON ep.PlateID = pl.ID
     LEFT OUTER JOIN ImagingTask it ON it.ExperimentPlateID = ep.ID
-WHERE pl.DateDispensed >= convert(date, '%s', 111) AND pl.DateDispensed <= dateadd(%s, 1, convert(date, '%s', 111))
-    AND ((it.DateImaged >= convert(date, '%s', 111) AND it.DateImaged <= dateadd(%s, 1, convert(date, '%s', 111))) OR it.DateImaged is NULL)
+WHERE pl.DateDispensed >= convert(date, '%s', 111) AND pl.DateDispensed < dateadd(%s, 1, convert(date, '%s', 111))
+    AND ((it.DateImaged >= convert(date, '%s', 111) AND it.DateImaged < dateadd(%s, 1, convert(date, '%s', 111))) OR it.DateImaged is NULL)
 	AND g.Name <> 'AllRockMakerUsers'
 GROUP BY pl.Barcode,
     tn4.Name,
@@ -120,21 +120,31 @@ with pytds.connect(**credentials) as conn:
         filepath = os.path.join(filedir, filename)
         workbook = xlsxwriter.Workbook(filepath)
         worksheet = workbook.add_worksheet()
+        
+        bold = workbook.add_format({'bold': True})
+        date_format = workbook.add_format({'num_format': 'yyyy-mm-dd hh:mm:ss'})
+
+        worksheet.set_column('B:C', 30)
+        worksheet.set_column('E:G', 20)
 
         i = 0
-        worksheet.write(0, 0, 'barcode')
-        worksheet.write(0, 1, 'project')
-        worksheet.write(0, 2, 'date dispensed')
-        worksheet.write(0, 3, 'imagings')
-        worksheet.write(0, 4, 'user name')
-        worksheet.write(0, 5, 'group name')
-        worksheet.write(0, 6, 'plate type')
+
+        worksheet.write('A1', 'barcode', bold)
+        worksheet.write('B1', 'project', bold)
+        worksheet.write('C1', 'date dispensed', bold)
+        worksheet.write('D1', 'imagings', bold)
+        worksheet.write('E1', 'user name', bold)
+        worksheet.write('F1', 'group name', bold)
+        worksheet.write('G1', 'plate type', bold)
 
         for row in c.fetchall():
             i = i + 1
             j = 0
             for col in row:
-                worksheet.write(i, j, col)
+                if j != 2:
+                    worksheet.write(i, j, col)
+                else:
+                    worksheet.write(i, j, col, date_format)
                 j = j + 1
 
         workbook.close()
