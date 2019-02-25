@@ -25,7 +25,7 @@ except ImportError:
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('* %(asctime)s [id=%(thread)d] <%(levelname)s> %(message)s')
-hdlr = RotatingFileHandler(filename='plates_to_xlsx.log', maxBytes=1000000, backupCount=10)
+hdlr = RotatingFileHandler(filename='/tmp/plates_to_xlsx.log', maxBytes=1000000, backupCount=10)
 hdlr.setFormatter(formatter)
 logging.getLogger().addHandler(hdlr)
 
