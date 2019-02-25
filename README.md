@@ -9,7 +9,7 @@ pip install --user python-tds
 
 ## Configuration
 
-Copy the file db.example.cfg to db.cfg and customise it to use your own database credentials.
+Copy the file config.example.cfg to config.cfg and customise it to use your own database credentials and email settings.
 
 ## Running
 

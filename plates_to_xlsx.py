@@ -6,6 +6,10 @@
 import xlsxwriter
 import pytds
 import smtplib
+from email import encoders
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
 import logging
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
@@ -25,7 +29,7 @@ hdlr = RotatingFileHandler(filename='plates_to_xlsx.log', maxBytes=1000000, back
 hdlr.setFormatter(formatter)
 logging.getLogger().addHandler(hdlr)
 
-# Get input parameters 
+# Get input parameters
 interval = 'month'
 start_year = datetime.now().year
 start_month = datetime.now().month
@@ -38,39 +42,39 @@ if len(sys.argv) > 3:
 start_date = '%s/%s/01' % (start_year, start_month)
 
 # Query to retrieve all plates registered and the number of times each has been imaged, within the reporting time frame:
-sql = """SELECT pl.Barcode as "barcode", 
-    tn4.Name as "project", 
-    pl.DateDispensed as "date dispensed", 
-    count(it.DateImaged) as "imagings", 
-    u.Name as "user name", 
-    g.Name as "group name", 
+sql = """SELECT pl.Barcode as "barcode",
+    tn4.Name as "project",
+    pl.DateDispensed as "date dispensed",
+    count(it.DateImaged) as "imagings",
+    u.Name as "user name",
+    g.Name as "group name",
     c.Name as "plate type"
-FROM Plate pl 
+FROM Plate pl
     INNER JOIN Experiment e ON pl.ExperimentID = e.ID
-    INNER JOIN Containers c ON e.ContainerID = c.ID 
+    INNER JOIN Containers c ON e.ContainerID = c.ID
     INNER JOIN Users u ON e.userID = u.ID
     INNER JOIN GroupUser gu ON u.ID = gu.UserID
     INNER JOIN Groups g ON g.ID = gu.GroupID
-    INNER JOIN TreeNode tn1 ON pl.TreeNodeID = tn1.ID 
+    INNER JOIN TreeNode tn1 ON pl.TreeNodeID = tn1.ID
     INNER JOIN TreeNode tn2 ON tn1.ParentID = tn2.ID
     INNER JOIN TreeNode tn3 ON tn2.ParentID = tn3.ID
     INNER JOIN TreeNode tn4 ON tn3.ParentID = tn4.ID
     LEFT OUTER JOIN ExperimentPlate ep ON ep.PlateID = pl.ID
     LEFT OUTER JOIN ImagingTask it ON it.ExperimentPlateID = ep.ID
-WHERE pl.DateDispensed >= convert(date, '%s', 111) AND pl.DateDispensed <= dateadd(%s, 1, convert(date, '%s', 111)) 
+WHERE pl.DateDispensed >= convert(date, '%s', 111) AND pl.DateDispensed <= dateadd(%s, 1, convert(date, '%s', 111))
     AND ((it.DateImaged >= convert(date, '%s', 111) AND it.DateImaged <= dateadd(%s, 1, convert(date, '%s', 111))) OR it.DateImaged is NULL)
 	AND g.Name <> 'AllRockMakerUsers'
-GROUP BY pl.Barcode, 
-    tn4.Name, 
-    pl.DateDispensed,  
-    u.Name, 
-    g.Name, 
+GROUP BY pl.Barcode,
+    tn4.Name,
+    pl.DateDispensed,
+    u.Name,
+    g.Name,
     c.Name
 ORDER BY pl.DateDispensed ASC
 """ % (start_date, interval, start_date, start_date, interval, start_date)
 
 # Get the database credentials from the config file:
-configuration_file = 'db.cfg'
+configuration_file = 'config.cfg'
 config = configparser.RawConfigParser(allow_no_value=True)
 if not config.read(configuration_file):
     msg = 'No configuration found at %s' % configuration_file
@@ -84,6 +88,17 @@ if not config.has_section('RockMakerDB'):
     raise AttributeError(msg)
 else:
     credentials = dict(config.items('RockMakerDB'))
+
+sender = None
+recipients = None
+if not config.has_section('Email'):
+    msg = 'No "Email" section in configuration found at %s' % configuration_file
+    logging.getLogger().exception(msg)
+    raise AttributeError(msg)
+else:
+    email_settings = dict(config.items('Email'))
+    sender = email_settings['sender']
+    recipients = email_settings['recipients']
 
 filename = None
 # Connect to the database, create a cursor, actually execute the query, and write the results to an xlsx file:
@@ -114,18 +129,35 @@ with pytds.connect(**credentials) as conn:
         workbook.close()
         print('Success - report available at %s' % filename)
 
-if filename is not None:
+if filename is not None and sender is not None and recipients is not None:
+    message = MIMEMultipart()
+    message['Subject'] = 'RockMaker plate report for %s starting %s' % (interval, start_date)
+    message['From'] = 'no-reply@diamond.ac.uk'
+    message['To'] = 'karl.levik@diamond.ac.uk'
+    body = 'Please find the report attached.'
+    message.attach(MIMEText(body, 'plain'))
+
+    with open(filename, 'rb') as attachment:
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(attachment.read())
+
+    encoders.encode_base64(part)
+
+    part.add_header(
+        'Content-Disposition',
+        'attachment; filename= %s' % filename,
+    )
+
+    message.attach(part)
+    text = message.as_string()
+
     try:
         server = smtplib.SMTP('localhost', 25) # or 587?
-
-        # Next, log in to the server
-        #server.login("youremailusername", "password")
+        #server.login('youremailusername', 'password')
 
         # Send the mail
-        msg = """RockMaker plate report for %s starting %s
-Please find the report attached.""" % (interval, start_month)
-        server.sendmail("no-reply@diamond.ac.uk", "karl.levik@diamond.ac.uk", msg)
+        server.sendmail(sender, recipients, text)
     except:
-        err_msg = "Failed to send email"
+        err_msg = 'Failed to send email'
         logging.getLogger().exception(err_msg)
         print(err_msg)
