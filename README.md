@@ -1,5 +1,13 @@
 # Scripts to generate reports from a RockMaker databases
 
+## Features
+
+- Reads config file
+- Gets command-line arguments
+- Queries the database to get a list of plates registered per month (or year), the number of times each has been imaged, plus more
+- Writes the query result to a spreadsheet (.xlsx)
+- Emails the spreadsheet as an attachment to the recipient email addresses defined in the config file 
+
 ## Installing dependencies
 
 ```bash
