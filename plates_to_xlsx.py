@@ -57,7 +57,9 @@ sql = """SELECT pl.Barcode as "barcode",
     count(it.DateImaged) as "imagings",
     u.Name as "user name",
     g.Name as "group name",
-    c.Name as "plate type"
+    c.Name as "plate type",
+    st.Temperature as "setup temp",
+    itemp.Temperature as "incub. temp"
 FROM Plate pl
     INNER JOIN Experiment e ON pl.ExperimentID = e.ID
     INNER JOIN Containers c ON e.ContainerID = c.ID
@@ -68,6 +70,8 @@ FROM Plate pl
     INNER JOIN TreeNode tn2 ON tn1.ParentID = tn2.ID
     INNER JOIN TreeNode tn3 ON tn2.ParentID = tn3.ID
     INNER JOIN TreeNode tn4 ON tn3.ParentID = tn4.ID
+    INNER JOIN SetupTemp st ON e.SetupTempID = st.ID
+    INNER JOIN IncubationTemp itemp ON e.IncubationTempID = itemp.ID
     LEFT OUTER JOIN ExperimentPlate ep ON ep.PlateID = pl.ID
     LEFT OUTER JOIN ImagingTask it ON it.ExperimentPlateID = ep.ID
 WHERE pl.DateDispensed >= convert(date, '%s', 111) AND pl.DateDispensed < dateadd(%s, 1, convert(date, '%s', 111))
@@ -78,7 +82,9 @@ GROUP BY pl.Barcode,
     pl.DateDispensed,
     u.Name,
     g.Name,
-    c.Name
+    c.Name,
+    st.Temperature,
+    itemp.Temperature
 ORDER BY pl.DateDispensed ASC
 """ % (start_date, interval, start_date, start_date, interval, start_date)
 
@@ -124,10 +130,11 @@ with pytds.connect(**credentials) as conn:
         bold = workbook.add_format({'bold': True})
         date_format = workbook.add_format({'num_format': 'yyyy-mm-dd hh:mm:ss'})
 
-        worksheet.set_column('B:C', 30)
+        worksheet.set_column('A:A', 8)
+        worksheet.set_column('B:B', 30)
+        worksheet.set_column('C:C', 20)
         worksheet.set_column('E:G', 20)
-
-        i = 0
+        worksheet.set_column('H:I', 11)
 
         worksheet.write('A1', 'barcode', bold)
         worksheet.write('B1', 'project', bold)
@@ -136,7 +143,10 @@ with pytds.connect(**credentials) as conn:
         worksheet.write('E1', 'user name', bold)
         worksheet.write('F1', 'group name', bold)
         worksheet.write('G1', 'plate type', bold)
+        worksheet.write('H1', 'setup temp', bold)
+        worksheet.write('I1', 'incub. temp', bold)
 
+        i = 0
         for row in c.fetchall():
             i = i + 1
             j = 0
