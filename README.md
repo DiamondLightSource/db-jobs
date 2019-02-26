@@ -22,5 +22,5 @@ Copy the file config.example.cfg to config.cfg and customise it to use your own 
 ## Running
 
 ```bash
-python plates_to_xlsx.py month 2018 01
+python rmaker_plates_to_xlsx.py month 2018 01
 ```
