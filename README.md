@@ -1,4 +1,4 @@
-# Generate RockMaker plate reports
+# Database reporting scripts
 
 ## Features
 
@@ -13,14 +13,16 @@
 ```bash
 pip install --user XlsxWriter
 pip install --user python-tds
+pip install --user mysql-connector
 ```
 
 ## Configuration
 
 Copy the file config.example.cfg to config.cfg and customise it to use your own database credentials and email settings.
 
-## Running
+## Examples
 
 ```bash
-python rmaker_plates_to_xlsx.py month 2018 01
+python rmaker_plates_to_xlsx.py month 2018 10
+python ispyb_plates_to_xlsx.py month 2018 01
 ```
