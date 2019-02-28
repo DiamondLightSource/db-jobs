@@ -25,7 +25,7 @@ except ImportError:
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('* %(asctime)s [id=%(thread)d] <%(levelname)s> %(message)s')
-hdlr = RotatingFileHandler(filename='/tmp/plates_to_xlsx.log', maxBytes=1000000, backupCount=10)
+hdlr = RotatingFileHandler(filename='/tmp/rmaker_plates_to_xlsx.log', maxBytes=1000000, backupCount=10)
 hdlr.setFormatter(formatter)
 logging.getLogger().addHandler(hdlr)
 
@@ -121,12 +121,12 @@ with pytds.connect(**credentials) as conn:
     with conn.cursor() as c:
         c.execute(sql)
 
-        filename = 'report_%s_%s-%s.xlsx' % (interval, start_year, start_month)
+        filename = 'rmaker_report_%s_%s-%s.xlsx' % (interval, start_year, start_month)
         filedir = '/tmp'
         filepath = os.path.join(filedir, filename)
         workbook = xlsxwriter.Workbook(filepath)
         worksheet = workbook.add_worksheet()
-        
+
         bold = workbook.add_format({'bold': True})
         date_format = workbook.add_format({'num_format': 'yyyy-mm-dd hh:mm:ss'})
 
