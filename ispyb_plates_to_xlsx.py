@@ -83,13 +83,13 @@ configuration_file = 'config.cfg'
 config = configparser.RawConfigParser(allow_no_value=True)
 if not config.read(configuration_file):
     msg = 'No configuration found at %s' % configuration_file
-    logging.getLogger().exception(msg)
+    logging.getLogger().error(msg)
     raise AttributeError(msg)
 
 credentials = None
 if not config.has_section('ISPyBDB'):
     msg = 'No "ISPyBDB" section in configuration found at %s' % configuration_file
-    logging.getLogger().exception(msg)
+    logging.getLogger().error(msg)
     raise AttributeError(msg)
 else:
     credentials = dict(config.items('ISPyBDB'))
@@ -98,7 +98,7 @@ sender = None
 recipients = None
 if not config.has_section('Email'):
     msg = 'No "Email" section in configuration found at %s' % configuration_file
-    logging.getLogger().exception(msg)
+    logging.getLogger().error(msg)
     raise AttributeError(msg)
 else:
     email_settings = dict(config.items('Email'))
