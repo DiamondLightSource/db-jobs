@@ -4,8 +4,8 @@
 
 - Reads config file
 - Reads command-line arguments
-- Queries the database to get the plates registered per month (or year), the number of times each has been imaged, plus more
-- Writes the query result to a spreadsheet (.xlsx)
+- Queries the database to get a result set
+- Writes the query result set to a spreadsheet file (.xlsx)
 - Emails the spreadsheet as an attachment to the recipient email addresses defined in the config file
 
 ## Installing dependencies
@@ -23,6 +23,8 @@ Copy the file config.example.cfg to config.cfg and customise it to use your own 
 ## Examples
 
 ```bash
+# report on plates and imagings from a RockMaker database
 python rmaker_plates_to_xlsx.py month 2018 10
-python ispyb_plates_to_xlsx.py month 2018 01
+# report on plates and imagings from an ISPyB database
+python ispyb_plates_to_xlsx.py month 2018 09
 ```
