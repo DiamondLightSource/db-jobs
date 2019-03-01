@@ -89,7 +89,7 @@ ORDER BY pl.DateDispensed ASC
 """ % (start_date, interval, start_date, start_date, interval, start_date)
 
 # Get the database credentials from the config file:
-configuration_file = 'config.cfg'
+configuration_file = os.path.join(sys.path[0], 'config.cfg')
 config = configparser.RawConfigParser(allow_no_value=True)
 if not config.read(configuration_file):
     msg = 'No configuration found at %s' % configuration_file
@@ -184,18 +184,19 @@ if filepath is not None and sender is not None and recipients is not None:
     message.attach(part)
     text = message.as_string()
 
-    try:
-        server = smtplib.SMTP('localhost', 25) # or 587?
-        #server.login('youremailusername', 'password')
+    if recipients is not None and recipients != "":
+        try:
+            server = smtplib.SMTP('localhost', 25) # or 587?
+            #server.login('youremailusername', 'password')
 
-        # Send the mail
-        recipients_list = []
-        for i in recipients.split(','):
-            recipients_list.append(i.strip())
-        server.sendmail(sender, recipients_list, text)
-    except:
-        err_msg = 'Failed to send email'
-        logging.getLogger().exception(err_msg)
-        print(err_msg)
+            # Send the mail
+            recipients_list = []
+            for i in recipients.split(','):
+                recipients_list.append(i.strip())
+            server.sendmail(sender, recipients_list, text)
+        except:
+            err_msg = 'Failed to send email'
+            logging.getLogger().exception(err_msg)
+            print(err_msg)
 
-    logging.getLogger().debug('Email sent')
+        logging.getLogger().debug('Email sent')
