@@ -154,10 +154,11 @@ with pytds.connect(**credentials) as conn:
             i = i + 1
             j = 0
             for col in row:
-                if j != 2:
-                    worksheet.write(i, j, col)
-                else:
-                    worksheet.write(i, j, col, date_format)
+                if j != 5: # skip the u.ID column
+                    if j != 2:
+                        worksheet.write(i, j, col)
+                    else:
+                        worksheet.write(i, j, col, date_format)
                 j = j + 1
 
         workbook.close()
