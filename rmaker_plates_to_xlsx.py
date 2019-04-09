@@ -56,7 +56,13 @@ sql = """SELECT pl.Barcode as "barcode",
     pl.DateDispensed as "date dispensed",
     count(it.DateImaged) as "imagings",
     u.Name as "user name",
-    g.Name as "group name",
+    u.ID as "uID",
+    STUFF((
+          SELECT ', ' + g.Name
+          FROM Groups g
+            INNER JOIN GroupUser gu ON g.ID = gu.GroupID
+          WHERE u.ID = gu.UserID AND g.Name <> 'AllRockMakerUsers'
+          FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 1, '') as "group name",
     c.Name as "plate type",
     st.Temperature as "setup temp",
     itemp.Temperature as "incub. temp"
@@ -64,8 +70,6 @@ FROM Plate pl
     INNER JOIN Experiment e ON pl.ExperimentID = e.ID
     INNER JOIN Containers c ON e.ContainerID = c.ID
     INNER JOIN Users u ON e.userID = u.ID
-    INNER JOIN GroupUser gu ON u.ID = gu.UserID
-    INNER JOIN Groups g ON g.ID = gu.GroupID
     INNER JOIN TreeNode tn1 ON pl.TreeNodeID = tn1.ID
     INNER JOIN TreeNode tn2 ON tn1.ParentID = tn2.ID
     INNER JOIN TreeNode tn3 ON tn2.ParentID = tn3.ID
@@ -76,12 +80,11 @@ FROM Plate pl
     LEFT OUTER JOIN ImagingTask it ON it.ExperimentPlateID = ep.ID
 WHERE pl.DateDispensed >= convert(date, '%s', 111) AND pl.DateDispensed < dateadd(%s, 1, convert(date, '%s', 111))
     AND ((it.DateImaged >= convert(date, '%s', 111) AND it.DateImaged < dateadd(%s, 1, convert(date, '%s', 111))) OR it.DateImaged is NULL)
-	AND g.Name <> 'AllRockMakerUsers'
 GROUP BY pl.Barcode,
     tn4.Name,
     pl.DateDispensed,
     u.Name,
-    g.Name,
+    u.ID,
     c.Name,
     st.Temperature,
     itemp.Temperature
