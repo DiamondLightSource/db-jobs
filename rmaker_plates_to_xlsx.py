@@ -21,7 +21,7 @@ except ImportError:
   import ConfigParser as configparser
 
 
-def make_sql(headers):
+def make_sql(headers, start_date, interval):
     fmt = copy.deepcopy(headers)
     fmt.append(start_date)
     fmt.append(interval)
@@ -152,25 +152,32 @@ today = date.today()
 first = today.replace(day=1)
 prev_date = first - timedelta(days=1)
 
-start_year = prev_date.year
-start_month = prev_date.month
 if len(sys.argv) > 1:
     interval = sys.argv[1]
-    if interval not in ('month', 'year'):
+
+    if interval == 'month':
+        start_year = prev_date.year
+        start_month = prev_date.month
+    elif interval == 'year':
+        start_year = prev_date.year - 1
+        start_month = prev_date.month
+    else:
         err_msg = 'interval must be "month" or "year"'
         logging.getLogger().error(err_msg)
         raise AttributeError(err_msg)
-if len(sys.argv) > 2:
-    start_year = sys.argv[2]  # e.g. 2018
-if len(sys.argv) > 3:
-    start_month = sys.argv[3] # e.g. 02
+
+    if len(sys.argv) > 2:
+        start_year = sys.argv[2]  # e.g. 2018
+        if len(sys.argv) > 3:
+            start_month = sys.argv[3] # e.g. 02
+
 start_date = '%s/%s/01' % (start_year, start_month)
 
 # Query to retrieve all plates registered and the number of times each has been imaged, within the reporting time frame:
 field_names = ['barcode', 'project', 'date dispensed', 'imagings', 'user name',
     'group name', 'plate type', 'setup temp', 'incub. temp']
 
-sql = make_sql(field_names)
+sql = make_sql(field_names, start_date, interval)
 
 (credentials, sender, recipients) = read_config()
 
