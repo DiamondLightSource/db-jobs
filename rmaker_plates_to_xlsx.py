@@ -20,13 +20,17 @@ try:
 except ImportError:
   import ConfigParser as configparser
 
+def make_sql(start_date, interval):
+    """SQL query to retrieve all plates registered and the number of times each has been imaged, within the reporting time frame"""
 
-def make_sql(headers, start_date, interval):
+    headers = ['barcode', 'project', 'date dispensed', 'imagings',
+    'user name', 'group name', 'plate type', 'setup temp', 'incub. temp']
+
     fmt = copy.deepcopy(headers)
     fmt.append(start_date)
     fmt.append(interval)
 
-    return """SELECT pl.Barcode as "{0}",
+    sql = """SELECT pl.Barcode as "{0}",
         tn4.Name as "{1}",
         pl.DateDispensed as "{2}",
         count(it.DateImaged) as "{3}",
@@ -66,44 +70,49 @@ def make_sql(headers, start_date, interval):
     ORDER BY pl.DateDispensed ASC
     """.format(*fmt)
 
-def send_email(filepath, sender, recipients, interval, start_date):
-    message = MIMEMultipart()
-    message['Subject'] = 'RockMaker plate report for %s starting %s' % (interval, start_date)
-    message['From'] = sender
-    message['To'] = recipients
-    body = 'Please find the report attached.'
-    message.attach(MIMEText(body, 'plain'))
+    return (sql, headers)
 
-    with open(filepath, 'rb') as attachment:
-        part = MIMEBase('application', 'octet-stream')
-        part.set_payload(attachment.read())
+def send_email(filedir, filename, sender, recipients, interval, start_date):
+    if filedir is not None and filename is not None and sender is not None and recipients is not None:
+        filepath = os.path.join(filedir, filename)
 
-    encoders.encode_base64(part)
+        message = MIMEMultipart()
+        message['Subject'] = 'RockMaker plate report for %s starting %s' % (interval, start_date)
+        message['From'] = sender
+        message['To'] = recipients
+        body = 'Please find the report attached.'
+        message.attach(MIMEText(body, 'plain'))
 
-    part.add_header(
-        'Content-Disposition',
-        'attachment; filename= %s' % filename,
-    )
+        with open(filepath, 'rb') as attachment:
+            part = MIMEBase('application', 'octet-stream')
+            part.set_payload(attachment.read())
 
-    message.attach(part)
-    text = message.as_string()
+        encoders.encode_base64(part)
 
-    if recipients is not None and recipients != "":
-        try:
-            server = smtplib.SMTP('localhost', 25) # or 587?
-            #server.login('youremailusername', 'password')
+        part.add_header(
+            'Content-Disposition',
+            'attachment; filename= %s' % filename,
+        )
 
-            # Send the mail
-            recipients_list = []
-            for i in recipients.split(','):
-                recipients_list.append(i.strip())
-            server.sendmail(sender, recipients_list, text)
-        except:
-            err_msg = 'Failed to send email'
-            logging.getLogger().exception(err_msg)
-            print(err_msg)
+        message.attach(part)
+        text = message.as_string()
 
-        logging.getLogger().debug('Email sent')
+        if recipients is not None and recipients != "":
+            try:
+                server = smtplib.SMTP('localhost', 25) # or 587?
+                #server.login('youremailusername', 'password')
+
+                # Send the mail
+                recipients_list = []
+                for i in recipients.split(','):
+                    recipients_list.append(i.strip())
+                server.sendmail(sender, recipients_list, text)
+            except:
+                err_msg = 'Failed to send email'
+                logging.getLogger().exception(err_msg)
+                print(err_msg)
+
+            logging.getLogger().debug('Email sent')
 
 
 def read_config():
@@ -136,112 +145,115 @@ def read_config():
 
     return (credentials, sender, recipients)
 
+def set_logging(filedir, filename):
+    """Configure logging"""
+    filepath = os.path.join(filedir, filename)
 
-# Configure logging
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-formatter = logging.Formatter('* %(asctime)s [id=%(thread)d] <%(levelname)s> %(message)s')
-hdlr = RotatingFileHandler(filename='/tmp/rmaker_plates_to_xlsx.log', maxBytes=1000000, backupCount=10)
-hdlr.setFormatter(formatter)
-logging.getLogger().addHandler(hdlr)
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('* %(asctime)s [id=%(thread)d] <%(levelname)s> %(message)s')
+    hdlr = RotatingFileHandler(filename=filepath, maxBytes=1000000, backupCount=10)
+    hdlr.setFormatter(formatter)
+    logging.getLogger().addHandler(hdlr)
 
-# Get input parameters, otherwise use default values
-interval = 'month'
+def get_parameters():
+    # Get input parameters, otherwise use default values
+    interval = 'month'
 
-today = date.today()
-first = today.replace(day=1)
-prev_date = first - timedelta(days=1)
+    today = date.today()
+    first = today.replace(day=1)
+    prev_date = first - timedelta(days=1)
 
-if len(sys.argv) > 1:
-    interval = sys.argv[1]
+    if len(sys.argv) > 1:
+        interval = sys.argv[1]
 
-    if interval == 'month':
-        start_year = prev_date.year
-        start_month = prev_date.month
-    elif interval == 'year':
-        start_year = prev_date.year - 1
-        start_month = prev_date.month
-    else:
-        err_msg = 'interval must be "month" or "year"'
-        logging.getLogger().error(err_msg)
-        raise AttributeError(err_msg)
+    if len(sys.argv) >= 1:
+        if interval == 'month':
+            start_year = prev_date.year
+            start_month = prev_date.month
+        elif interval == 'year':
+            start_year = prev_date.year - 1
+            start_month = prev_date.month
+        else:
+            err_msg = 'interval must be "month" or "year"'
+            logging.getLogger().error(err_msg)
+            raise AttributeError(err_msg)
 
-    if len(sys.argv) > 2:
-        start_year = sys.argv[2]  # e.g. 2018
-        if len(sys.argv) > 3:
-            start_month = sys.argv[3] # e.g. 02
+        if len(sys.argv) > 2:
+            start_year = sys.argv[2]  # e.g. 2018
+            if len(sys.argv) > 3:
+                start_month = sys.argv[3] # e.g. 02
 
-start_date = '%s/%s/01' % (start_year, start_month)
+    start_date = '%s/%s/01' % (start_year, start_month)
+    return (interval, start_date, start_year, start_month)
 
-# Query to retrieve all plates registered and the number of times each has been imaged, within the reporting time frame:
-field_names = ['barcode', 'project', 'date dispensed', 'imagings', 'user name',
-    'group name', 'plate type', 'setup temp', 'incub. temp']
+def create_report(filedir, filename, credentials, sql, field_names):
+    filepath = os.path.join(filedir, filename)
 
-sql = make_sql(field_names, start_date, interval)
+    # Connect to database, create cursor, execute query, write results to xlsx file:
+    with pytds.connect(
+        dsn = credentials['dsn'],
+        database = credentials['database'],
+        user = credentials['user'],
+        password = credentials['password'],
+        as_dict = True
+        ) as conn:
+        with conn.cursor() as c:
+            c.execute(sql)
 
-(credentials, sender, recipients) = read_config()
+            workbook = xlsxwriter.Workbook(filepath)
+            worksheet = workbook.add_worksheet()
 
-filename = None
-# Connect to the database, create a cursor, actually execute the query, and write the results to an xlsx file:
-with pytds.connect(
-    dsn = credentials['dsn'],
-    database = credentials['database'],
-    user = credentials['user'],
-    password = credentials['password'],
-    as_dict = True
-    ) as conn:
-    with conn.cursor() as c:
-        c.execute(sql)
+            bold = workbook.add_format({'bold': True})
+            date_format = workbook.add_format({'num_format': 'yyyy-mm-dd hh:mm:ss'})
 
-        filename = 'rmaker_report_%s_%s-%s.xlsx' % (interval, start_year, start_month)
-        filedir = '/tmp'
-        filepath = os.path.join(filedir, filename)
-        workbook = xlsxwriter.Workbook(filepath)
-        worksheet = workbook.add_worksheet()
+            # Pre-populate the max lengths for each column
+            # with the lenth of the header
+            max_lengths = []
+            for field_name in field_names:
+                max_lengths.append(len(field_name))
 
-        bold = workbook.add_format({'bold': True})
-        date_format = workbook.add_format({'num_format': 'yyyy-mm-dd hh:mm:ss'})
+            # Populate the worksheet columns with values from the DB result set.
+            # Keep track of the max lengths for each column.
+            i = 0
+            for row in c.fetchall():
 
-        # Pre-populate the max lengths for each column
-        # with the lenth of the header
-        max_lengths = []
-        for field_name in field_names:
-            max_lengths.append(len(field_name))
+                i += 1
+                j = 0
+                for field_name in field_names:
+                    field_value = row[field_name]
 
-        # Populate the worksheet columns with values from the DB result set.
-        # Keep track of the max lengths for each column.
-        i = 0
-        for row in c.fetchall():
+                    if isinstance(field_value, datetime):
+                        worksheet.write(i, j, field_value, date_format)
+                        s = str(field_value)
+                        # disregard chars after dot when finding length
+                        max_lengths[j] = len(s[:s.rfind('.')])
+                    else:
+                        worksheet.write(i, j, field_value)
+                        if len(str(field_value)) > max_lengths[j]:
+                            max_lengths[j] = len(str(field_value))
 
-            i += 1
+                    j += 1
+
+            # Populate the column headers in the worksheet.
+            # Set the column widths to the max length used in each column.
             j = 0
             for field_name in field_names:
-                field_value = row[field_name]
-
-                if isinstance(field_value, datetime):
-                    worksheet.write(i, j, field_value, date_format)
-                    s = str(field_value)
-                    # disregard chars after dot when finding length
-                    max_lengths[j] = len(s[:s.rfind('.')])
-                else:
-                    worksheet.write(i, j, field_value)
-                    if len(str(field_value)) > max_lengths[j]:
-                        max_lengths[j] = len(str(field_value))
-
+                worksheet.write(0, j, field_name, bold)
+                worksheet.set_column(j, j, max_lengths[j] + 1)
                 j += 1
 
-        # Populate the column headers in the worksheet.
-        # Set the column widths to the max length used in each column.
-        j = 0
-        for field_name in field_names:
-            worksheet.write(0, j, field_name, bold)
-            worksheet.set_column(j, j, max_lengths[j] + 1)
-            j += 1
+            workbook.close()
+            msg = 'Report available at %s' % filepath
+            print(msg)
+            logging.getLogger().debug(msg)
 
-        workbook.close()
-        msg = 'Report available at %s' % filepath
-        print(msg)
-        logging.getLogger().debug(msg)
 
-if filepath is not None and sender is not None and recipients is not None:
-    send_email(filepath, sender, recipients, interval, start_date)
+(interval, start_date, start_year, start_month) = get_parameters()
+filedir = '/tmp'
+filename = 'rmaker_report_%s_%s-%s.xlsx' % (interval, start_year, start_month)
+set_logging(filedir, 'rmaker_plates_to_xlsx.log')
+(sql, field_names) = make_sql(start_date, interval)
+(credentials, sender, recipients) = read_config()
+create_report(filedir, filename, credentials, sql, field_names)
+send_email(filedir, filename, sender, recipients, interval, start_date)
