@@ -2,23 +2,12 @@
 # Copyright 2019 Karl Levik
 #
 
-# Our imports:
 import xlsxwriter
 import pytds
-import smtplib
-from email import encoders
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email.mime.multipart import MIMEMultipart
+from dbreports import DBReports
 import logging
-from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta, date
-import sys, os, copy
-# Trick to make it work with both Python 2 and 3:
-try:
-  import configparser
-except ImportError:
-  import ConfigParser as configparser
+import os, copy
 
 def make_sql(start_date, interval):
     """SQL query to retrieve all plates registered and the number of times each has been imaged, within the reporting time frame"""
@@ -72,120 +61,6 @@ def make_sql(start_date, interval):
 
     return (sql, headers)
 
-def send_email(filedir, filename, sender, recipients, interval, start_date):
-    if filedir is not None and filename is not None and sender is not None and recipients is not None:
-        filepath = os.path.join(filedir, filename)
-
-        message = MIMEMultipart()
-        message['Subject'] = 'RockMaker plate report for %s starting %s' % (interval, start_date)
-        message['From'] = sender
-        message['To'] = recipients
-        body = 'Please find the report attached.'
-        message.attach(MIMEText(body, 'plain'))
-
-        with open(filepath, 'rb') as attachment:
-            part = MIMEBase('application', 'octet-stream')
-            part.set_payload(attachment.read())
-
-        encoders.encode_base64(part)
-
-        part.add_header(
-            'Content-Disposition',
-            'attachment; filename= %s' % filename,
-        )
-
-        message.attach(part)
-        text = message.as_string()
-
-        if recipients is not None and recipients != "":
-            try:
-                server = smtplib.SMTP('localhost', 25) # or 587?
-                #server.login('youremailusername', 'password')
-
-                # Send the mail
-                recipients_list = []
-                for i in recipients.split(','):
-                    recipients_list.append(i.strip())
-                server.sendmail(sender, recipients_list, text)
-            except:
-                err_msg = 'Failed to send email'
-                logging.getLogger().exception(err_msg)
-                print(err_msg)
-
-            logging.getLogger().debug('Email sent')
-
-
-def read_config():
-    # Get the database credentials and email settings from the config file:
-    configuration_file = os.path.join(sys.path[0], 'config.cfg')
-    config = configparser.RawConfigParser(allow_no_value=True)
-    if not config.read(configuration_file):
-        msg = 'No configuration found at %s' % configuration_file
-        logging.getLogger().error(msg)
-        raise AttributeError(msg)
-
-    credentials = None
-    if not config.has_section('RockMakerDB'):
-        msg = 'No "RockMakerDB" section in configuration found at %s' % configuration_file
-        logging.getLogger().error(msg)
-        raise AttributeError(msg)
-    else:
-        credentials = dict(config.items('RockMakerDB'))
-
-    sender = None
-    recipients = None
-    if not config.has_section('Email'):
-        msg = 'No "Email" section in configuration found at %s' % configuration_file
-        logging.getLogger().error(msg)
-        raise AttributeError(msg)
-    else:
-        email_settings = dict(config.items('Email'))
-        sender = email_settings['sender']
-        recipients = email_settings['recipients']
-
-    return (credentials, sender, recipients)
-
-def set_logging(filedir, filename):
-    """Configure logging"""
-    filepath = os.path.join(filedir, filename)
-
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('* %(asctime)s [id=%(thread)d] <%(levelname)s> %(message)s')
-    hdlr = RotatingFileHandler(filename=filepath, maxBytes=1000000, backupCount=10)
-    hdlr.setFormatter(formatter)
-    logging.getLogger().addHandler(hdlr)
-
-def get_parameters():
-    # Get input parameters, otherwise use default values
-    interval = 'month'
-
-    today = date.today()
-    first = today.replace(day=1)
-    prev_date = first - timedelta(days=1)
-
-    if len(sys.argv) > 1:
-        interval = sys.argv[1]
-
-    if len(sys.argv) >= 1:
-        if interval == 'month':
-            start_year = prev_date.year
-            start_month = prev_date.month
-        elif interval == 'year':
-            start_year = prev_date.year - 1
-            start_month = prev_date.month
-        else:
-            err_msg = 'interval must be "month" or "year"'
-            logging.getLogger().error(err_msg)
-            raise AttributeError(err_msg)
-
-        if len(sys.argv) > 2:
-            start_year = sys.argv[2]  # e.g. 2018
-            if len(sys.argv) > 3:
-                start_month = sys.argv[3] # e.g. 02
-
-    start_date = '%s/%s/01' % (start_year, start_month)
-    return (interval, start_date, start_year, start_month)
 
 def create_report(filedir, filename, credentials, sql, field_names):
     filepath = os.path.join(filedir, filename)
@@ -244,16 +119,13 @@ def create_report(filedir, filename, credentials, sql, field_names):
                 j += 1
 
             workbook.close()
-            msg = 'Report available at %s' % filepath
+            msg = "Report available at %s" % filepath
             print(msg)
             logging.getLogger().debug(msg)
 
-
-(interval, start_date, start_year, start_month) = get_parameters()
-filedir = '/tmp'
-filename = 'rmaker_report_%s_%s-%s.xlsx' % (interval, start_year, start_month)
-set_logging(filedir, 'rmaker_plates_to_xlsx.log')
-(sql, field_names) = make_sql(start_date, interval)
-(credentials, sender, recipients) = read_config()
-create_report(filedir, filename, credentials, sql, field_names)
-send_email(filedir, filename, sender, recipients, interval, start_date)
+r = DBReports("RockMaker", "/tmp", "rmaker_report_")
+r.set_logging()
+(sql, field_names) = make_sql(r.start_date, r.interval)
+r.read_config()
+create_report(r.filedir, r.filename, r.credentials, sql, field_names)
+r.send_email()
