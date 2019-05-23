@@ -52,6 +52,6 @@ ORDER BY pl.DateDispensed ASC
 r = MSSQLReport("RockMaker", "/tmp", "rmaker_report_")
 r.set_logging(logging.DEBUG)
 r.make_sql(sql_template, headers)
-r.read_config("config.cfg")
+r.read_config("config.cfg", "RockMakerDB")
 r.create_report()
 r.send_email()

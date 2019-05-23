@@ -67,7 +67,7 @@ class DBReport():
         hdlr.setFormatter(formatter)
         logging.getLogger().addHandler(hdlr)
 
-    def read_config(self, config_file):
+    def read_config(self, config_file, db_section):
         # Get the database credentials and email settings from the config file:
         configuration_file = os.path.join(sys.path[0], config_file)
         config = configparser.RawConfigParser(allow_no_value=True)
@@ -77,12 +77,12 @@ class DBReport():
             raise AttributeError(msg)
 
         self.credentials = None
-        if not config.has_section('RockMakerDB'):
+        if not config.has_section(db_section):
             msg = 'No "RockMakerDB" section in configuration found at %s' % configuration_file
             logging.getLogger().error(msg)
             raise AttributeError(msg)
         else:
-            self.credentials = dict(config.items('RockMakerDB'))
+            self.credentials = dict(config.items(db_section))
 
         self.sender = None
         self.recipients = None
