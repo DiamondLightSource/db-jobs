@@ -1,7 +1,6 @@
 #
 # Copyright 2019 Karl Levik
 #
-
 import smtplib
 from email import encoders
 from email.mime.text import MIMEText
@@ -9,15 +8,16 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 import logging
 from logging.handlers import RotatingFileHandler
-from datetime import datetime, timedelta, date
-import sys, os
+from datetime import timedelta, date
+import sys, os, copy
+
 # Trick to make it work with both Python 2 and 3:
 try:
   import configparser
 except ImportError:
   import ConfigParser as configparser
 
-class DBReports():
+class DBReport():
     """Utility methods to create a report and send it as en email attachment"""
 
     def __init__(self, reportname, filedir, fileprefix):
@@ -57,19 +57,19 @@ class DBReports():
 
         self.start_date = '%s/%s/01' % (self.start_year, self.start_month)
 
-    def set_logging(self):
+    def set_logging(self, level):
         """Configure logging"""
-        filepath = os.path.join(self.filedir, '%s_%s_%s-%s.log' % (self.fileprefix, self.interval, self.start_year, self.start_month))
+        filepath = os.path.join(self.filedir, '%s%s_%s-%s.log' % (self.fileprefix, self.interval, self.start_year, self.start_month))
         logger = logging.getLogger()
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(level)
         formatter = logging.Formatter('* %(asctime)s [id=%(thread)d] <%(levelname)s> %(message)s')
         hdlr = RotatingFileHandler(filename=filepath, maxBytes=1000000, backupCount=10)
         hdlr.setFormatter(formatter)
         logging.getLogger().addHandler(hdlr)
 
-    def read_config(self):
+    def read_config(self, config_file):
         # Get the database credentials and email settings from the config file:
-        configuration_file = os.path.join(sys.path[0], 'config.cfg')
+        configuration_file = os.path.join(sys.path[0], config_file)
         config = configparser.RawConfigParser(allow_no_value=True)
         if not config.read(configuration_file):
             msg = 'No configuration found at %s' % configuration_file
@@ -96,6 +96,14 @@ class DBReports():
             self.recipients = email_settings['recipients']
 
         return True
+
+    def make_sql(self, sql_template, headers):
+        """Create proper SQL from the template - merge the headers in as aliases"""
+        self.headers = headers
+        fmt = copy.deepcopy(headers)
+        fmt.append(self.start_date)
+        fmt.append(self.interval)
+        self.sql = sql_template.format(*fmt)
 
     def send_email(self):
         if self.filedir is not None and self.filename is not None and self.sender is not None and self.recipients is not None:
