@@ -20,11 +20,15 @@ sql_template = """SELECT c.barcode as "{0}",
     i.temperature as "{7}"
 FROM Container c
     INNER JOIN BLSession bs ON c.sessionId = bs.sessionId
--- LEFT OUTER JOIN Dewar ... LEFT OUTER JOIN Shipping ... LEFT OUTER JOIN LabContact LEFT OUTER JOIN Laboratory ??????????????
+    LEFT OUTER JOIN Dewar d ON c.dewarId = d.dewarId
+    LEFT OUTER JOIN Shipping s ON d.shippingId = s.shippingId
+    LEFT OUTER JOIN LabContact lc ON s.sendingLabContactId = lc.labContactId
+    LEFT OUTER JOIN Person pe ON lc.personId = pe.personId
+    LEFT OUTER JOIN Laboratory l ON pe.laboratoryId = l.laboratoryId 
     INNER JOIN Proposal p ON bs.proposalId = p.proposalId
-    INNER JOIN Person pe ON c.ownerId = pe.personId
+    -- INNER JOIN Person pe ON c.ownerId = pe.personId
     INNER JOIN Imager i ON c.imagerId = i.imagerId
-    LEFT OUTER JOIN Laboratory l ON pe.laboratoryId = l.laboratoryId
+    -- LEFT OUTER JOIN Laboratory l ON pe.laboratoryId = l.laboratoryId
     LEFT OUTER JOIN ContainerInspection ci ON c.containerId = ci.containerId
 WHERE c.bltimeStamp >= '{8}' AND c.bltimeStamp < date_add('{8}', INTERVAL 1 {9})
     AND ((ci.completedTimeStamp >= '{8}' AND ci.completedTimeStamp < date_add('{8}', INTERVAL 1 {9})) OR ci.completedTimeStamp is NULL)
