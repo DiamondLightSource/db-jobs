@@ -28,3 +28,13 @@ python rmaker_plates_to_xlsx.py month 2018 10
 # report on plates and imagings from an ISPyB database
 python ispyb_plates_to_xlsx.py month 2018 09
 ```
+
+## Developing new reports
+
+You will need:
+- An SQL template string for your database query
+- A list with the column headers you want to use in the report
+- If your database system is not yet supported, extend the DBReport class and implement the `create_report` method. (See `mariadbreport.py` or `mssqlreport.py` for examples.)
+- If you don't have the database credentials yet in the `config.cfg` file, add them to the file under a new section.
+
+See `ispyb_plates_to_xlsx.py` or `rmaker_plates_to_xlsx.py` for examples of how to put it all together.
