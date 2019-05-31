@@ -49,9 +49,14 @@ GROUP BY pl.Barcode,
 ORDER BY pl.DateDispensed ASC
 """
 
-r = MSSQLReport("/tmp", "rmaker_report_")
-r.set_logging(logging.DEBUG)
+r = MSSQLReport(
+    "/tmp",
+    "rmaker_report_",
+    "config.cfg",
+    "RockMakerDB",
+    "RockMakerPlatesEmails",
+    logging.DEBUG
+)
 r.make_sql(sql_template, headers)
-r.read_config("config.cfg", "RockMakerDB")
 r.create_report("plates")
 r.send_email("RockMaker plate report")

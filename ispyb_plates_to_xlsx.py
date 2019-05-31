@@ -42,9 +42,14 @@ GROUP BY c.barcode,
 ORDER BY c.bltimeStamp ASC
 """
 
-r = MariaDBReport("/tmp", "ispyb_report_")
-r.set_logging(logging.DEBUG)
+r = MariaDBReport(
+    "/tmp",
+    "ispyb_report_",
+    "config.cfg",
+    "ISPyBDB",
+    "ISPyBPlatesEmails",
+    logging.DEBUG
+)
 r.make_sql(sql_template, headers)
-r.read_config("config.cfg", "ISPyBDB")
 r.create_report("plates")
 r.send_email("ISPyB plate report")

@@ -21,11 +21,13 @@ except ImportError:
 class DBReport():
     """Utility methods to create a report and send it as en email attachment"""
 
-    def __init__(self, working_dir, fileprefix):
+    def __init__(self, working_dir, fileprefix, config_file, db_section, email_section=None, log_level=logging.DEBUG):
         self.get_parameters()
         self.working_dir = working_dir
         self.fileprefix = fileprefix
         self.filename = '%s%s_%s-%s.xlsx' % (fileprefix, self.interval, self.start_year, self.start_month)
+        self.set_logging(log_level)
+        self.read_config(config_file, db_section, email_section)
 
     def get_parameters(self):
         # Get input parameters, otherwise use default values
@@ -67,7 +69,7 @@ class DBReport():
         hdlr.setFormatter(formatter)
         logging.getLogger().addHandler(hdlr)
 
-    def read_config(self, config_file, db_section):
+    def read_config(self, config_file, db_section, email_section=None):
         # Get the database credentials and email settings from the config file:
         configuration_file = os.path.join(sys.path[0], config_file)
         config = configparser.RawConfigParser(allow_no_value=True)
@@ -86,12 +88,12 @@ class DBReport():
 
         self.sender = None
         self.recipients = None
-        if not config.has_section('Email'):
-            msg = 'No "Email" section in configuration found at %s' % configuration_file
+        if email_section is None or not config.has_section(email_section):
+            msg = 'No "%s" section in configuration found at %s' % (email_section, configuration_file)
             logging.getLogger().error(msg)
             raise AttributeError(msg)
         else:
-            email_settings = dict(config.items('Email'))
+            email_settings = dict(config.items(email_section))
             self.sender = email_settings['sender']
             self.recipients = email_settings['recipients']
 
