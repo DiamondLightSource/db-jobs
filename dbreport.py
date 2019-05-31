@@ -21,10 +21,9 @@ except ImportError:
 class DBReport():
     """Utility methods to create a report and send it as en email attachment"""
 
-    def __init__(self, reportname, filedir, fileprefix):
+    def __init__(self, working_dir, fileprefix):
         self.get_parameters()
-        self.reportname = reportname
-        self.filedir = filedir
+        self.working_dir = working_dir
         self.fileprefix = fileprefix
         self.filename = '%s%s_%s-%s.xlsx' % (fileprefix, self.interval, self.start_year, self.start_month)
 
@@ -60,7 +59,7 @@ class DBReport():
 
     def set_logging(self, level):
         """Configure logging"""
-        filepath = os.path.join(self.filedir, '%s%s_%s-%s.log' % (self.fileprefix, self.interval, self.start_year, self.start_month))
+        filepath = os.path.join(self.working_dir, '%s%s_%s-%s.log' % (self.fileprefix, self.interval, self.start_year, self.start_month))
         logger = logging.getLogger()
         logger.setLevel(level)
         formatter = logging.Formatter('* %(asctime)s [id=%(thread)d] <%(levelname)s> %(message)s')
@@ -106,11 +105,11 @@ class DBReport():
         fmt.append(self.interval)
         self.sql = sql_template.format(*fmt)
 
-    def create_xlsx(self, result_set):
-        filepath = os.path.join(self.filedir, self.filename)
+    def create_xlsx(self, result_set, worksheet_name=None):
+        filepath = os.path.join(self.working_dir, self.filename)
 
         workbook = xlsxwriter.Workbook(filepath)
-        worksheet = workbook.add_worksheet()
+        worksheet = workbook.add_worksheet(worksheet_name)
 
         bold = workbook.add_format({'bold': True})
         date_format = workbook.add_format({'num_format': 'yyyy-mm-dd hh:mm:ss'})
@@ -156,12 +155,12 @@ class DBReport():
         print(msg)
         logging.getLogger().debug(msg)
 
-    def send_email(self):
-        if self.filedir is not None and self.filename is not None and self.sender is not None and self.recipients is not None:
-            filepath = os.path.join(self.filedir, self.filename)
+    def send_email(self, report_name):
+        if self.working_dir is not None and self.filename is not None and self.sender is not None and self.recipients is not None:
+            filepath = os.path.join(self.working_dir, self.filename)
 
             message = MIMEMultipart()
-            message['Subject'] = '%s plate report for %s starting %s' % (self.reportname, self.interval, self.start_date)
+            message['Subject'] = '%s for %s starting %s' % (report_name, self.interval, self.start_date)
             message['From'] = self.sender
             message['To'] = self.recipients
             body = 'Please find the report attached.'

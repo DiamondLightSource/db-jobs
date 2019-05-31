@@ -24,7 +24,7 @@ FROM Container c
     LEFT OUTER JOIN Shipping s ON d.shippingId = s.shippingId
     LEFT OUTER JOIN LabContact lc ON s.sendingLabContactId = lc.labContactId
     LEFT OUTER JOIN Person pe ON lc.personId = pe.personId
-    LEFT OUTER JOIN Laboratory l ON pe.laboratoryId = l.laboratoryId 
+    LEFT OUTER JOIN Laboratory l ON pe.laboratoryId = l.laboratoryId
     INNER JOIN Proposal p ON bs.proposalId = p.proposalId
     -- INNER JOIN Person pe ON c.ownerId = pe.personId
     INNER JOIN Imager i ON c.imagerId = i.imagerId
@@ -42,9 +42,9 @@ GROUP BY c.barcode,
 ORDER BY c.bltimeStamp ASC
 """
 
-r = MariaDBReport("ISPyB", "/tmp", "ispyb_report_")
+r = MariaDBReport("/tmp", "ispyb_report_")
 r.set_logging(logging.DEBUG)
 r.make_sql(sql_template, headers)
 r.read_config("config.cfg", "ISPyBDB")
-r.create_report()
-r.send_email()
+r.create_report("plates")
+r.send_email("ISPyB plate report")

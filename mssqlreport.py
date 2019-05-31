@@ -4,7 +4,7 @@ import logging
 
 class MSSQLReport(DBReport):
 
-    def create_report(self):
+    def create_report(self, worksheet_name=None):
         # Connect to database, create cursor, execute query, write results to xlsx file:
         with pytds.connect(
             dsn = self.credentials['dsn'],
@@ -16,4 +16,4 @@ class MSSQLReport(DBReport):
             with conn.cursor() as c:
                 c.execute(self.sql)
 
-                self.create_xlsx(c.fetchall())
+                self.create_xlsx(c.fetchall(), worksheet_name)
