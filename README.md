@@ -6,7 +6,7 @@
 - Reads command-line arguments
 - Queries the database to get a result set
 - Writes the query result set to a spreadsheet file (.xlsx)
-- Emails the spreadsheet as an attachment to the recipient email addresses defined in the config file
+- If recipient email addresses are defined in the config file, then emails the spreadsheet as an attachment to these
 
 ## Installing dependencies
 
