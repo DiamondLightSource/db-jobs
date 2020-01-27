@@ -33,14 +33,17 @@ GROUP BY bs.beamLineName, f.beamtimelost_starttime, f.beamtimelost_endtime, conc
 ORDER BY bs.beamLineName, f.beamtimelost_starttime
 """
 
+format = "csv"
+
 r = MariaDBReport(
     "/tmp",
     "fault_report_",
     "config.cfg",
     "ISPyBDB",
-    "FaultEmails",
-    logging.DEBUG
+    email_section="FaultEmails",
+    log_level=logging.DEBUG,
+    filesuffix=format
 )
 r.make_sql(sql_template, headers)
-r.create_report("faults")
+r.create_report("faults", format=format)
 r.send_email("Fault report")

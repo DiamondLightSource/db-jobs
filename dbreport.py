@@ -21,11 +21,12 @@ except ImportError:
 class DBReport():
     """Utility methods to create a report and send it as en email attachment"""
 
-    def __init__(self, working_dir, fileprefix, config_file, db_section, email_section=None, log_level=logging.DEBUG):
+    def __init__(self, working_dir, fileprefix, config_file, db_section, email_section=None, log_level=logging.DEBUG, filesuffix='xlsx'):
         self.get_parameters()
         self.working_dir = working_dir
         self.fileprefix = fileprefix
-        self.filename = '%s%s_%s-%s.xlsx' % (fileprefix, self.interval, self.start_year, self.start_month)
+        self.filesuffix = filesuffix
+        self.filename = '%s%s_%s-%s.%s' % (fileprefix, self.interval, self.start_year, self.start_month, filesuffix)
         self.set_logging(log_level)
         self.read_config(config_file, db_section, email_section)
 
@@ -156,6 +157,40 @@ class DBReport():
         msg = "Report available at %s" % filepath
         print(msg)
         logging.getLogger().debug(msg)
+
+    def create_csv(self, result_set, worksheet_name=None):
+        filepath = os.path.join(self.working_dir, self.filename)
+
+        with open(filepath, 'w') as f:
+
+            # Write comma-separated column headers.
+            i = 1
+            for header in self.headers:
+                f.write(header)
+                if i < len(self.headers):
+                    f.write(",")
+                i += 1
+
+            if len(self.headers) > 0:
+                f.write("\n")
+
+            # Write each row with comma-separated fields.
+            for row in result_set:
+                i = 1
+                for header in self.headers:
+                    field_value = str(row[header])
+                    if "," in field_value:
+                        field_value = "\"%s\"" % field_value
+                    f.write(field_value)
+                    if i < len(self.headers):
+                        f.write(",")
+                    i += 1
+                f.write("\n")
+
+        msg = "Report available at %s" % filepath
+        print(msg)
+        logging.getLogger().debug(msg)
+
 
     def send_email(self, report_name):
         if self.working_dir is not None and self.filename is not None and self.sender is not None and self.recipients is not None:
