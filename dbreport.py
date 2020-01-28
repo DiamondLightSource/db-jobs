@@ -192,7 +192,7 @@ class DBReport():
         logging.getLogger().debug(msg)
 
 
-    def send_email(self, report_name):
+    def send_email(self, report_name, attach_report=True):
         if self.working_dir is not None and self.filename is not None and self.sender is not None and self.recipients is not None:
             filepath = os.path.join(self.working_dir, self.filename)
 
@@ -200,21 +200,26 @@ class DBReport():
             message['Subject'] = '%s for %s starting %s' % (report_name, self.interval, self.start_date)
             message['From'] = self.sender
             message['To'] = self.recipients
-            body = 'Please find the report attached.'
+
+            if attach_report:
+                body = 'Please find the report attached.'
+            else:
+                body = 'Please fine report at %s.' % filepath
             message.attach(MIMEText(body, 'plain'))
 
-            with open(filepath, 'rb') as attachment:
-                part = MIMEBase('application', 'octet-stream')
-                part.set_payload(attachment.read())
+            if attach_report:
+                with open(filepath, 'rb') as attachment:
+                    part = MIMEBase('application', 'octet-stream')
+                    part.set_payload(attachment.read())
 
-            encoders.encode_base64(part)
+                encoders.encode_base64(part)
 
-            part.add_header(
-                'Content-Disposition',
-                'attachment; filename= %s' % self.filename,
-            )
+                part.add_header(
+                    'Content-Disposition',
+                    'attachment; filename= %s' % self.filename,
+                )
+                message.attach(part)
 
-            message.attach(part)
             text = message.as_string()
 
             if self.recipients is not None and self.recipients != "":
