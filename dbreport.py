@@ -204,7 +204,7 @@ class DBReport():
             if attach_report:
                 body = 'Please find the report attached.'
             else:
-                body = 'Please fine report at %s.' % filepath
+                body = 'Please find the report at %s.' % filepath
             message.attach(MIMEText(body, 'plain'))
 
             if attach_report:
