@@ -47,4 +47,4 @@ r = MariaDBReport(
 )
 r.make_sql(sql_template, headers)
 r.create_report("faults", format=format)
-r.send_email("Fault report")
+r.send_email("Fault report", attach_report=False)
