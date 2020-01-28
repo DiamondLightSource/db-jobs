@@ -37,7 +37,7 @@ ORDER BY bs.beamLineName, f.beamtimelost_starttime
 format = "csv"
 
 r = MariaDBReport(
-    "/tmp",
+    "/dls/science/groups/mx/faultrespots", # change to /tmp for local testing
     "fault_report_",
     "config.cfg",
     "ISPyBDB",
