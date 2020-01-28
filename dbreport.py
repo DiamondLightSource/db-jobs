@@ -26,7 +26,8 @@ class DBReport():
         self.working_dir = working_dir
         self.fileprefix = fileprefix
         self.filesuffix = filesuffix
-        self.filename = '%s%s_%s-%s.%s' % (fileprefix, self.interval, self.start_year, self.start_month, filesuffix)
+        nowstr = str(datetime.now().strftime('%Y%m%d-%H%M%S'))
+        self.filename = '%s%s_%s-%s_%s.%s' % (fileprefix, self.interval, self.start_year, self.start_month, nowstr, filesuffix)
         self.set_logging(log_level)
         self.read_config(config_file, db_section, email_section)
 
