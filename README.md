@@ -5,7 +5,7 @@
 - Reads config file
 - Reads command-line arguments
 - Queries the database to get a result set
-- Writes the query result set to a spreadsheet file (.xlsx)
+- Writes the query result set to a spreadsheet file (.xlsx or .csv)
 - If recipient email addresses are defined in the config file, then emails the spreadsheet as an attachment to these
 
 ## Installing dependencies
@@ -20,7 +20,7 @@ pip install --user mysql-connector
 
 Copy the file config.example.cfg to config.cfg and customise it to use your own database credentials and email settings.
 
-## Examples
+## Example usage
 
 ```bash
 # report on plates and imagings from a RockMaker database
