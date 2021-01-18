@@ -4,7 +4,7 @@ import logging
 
 class MSSQLReport(DBReport):
 
-    def create_report(self, worksheet_name=None):
+    def create_report(self):
         # Connect to database, create cursor, execute query, write results to xlsx file:
         with pytds.connect(
             dsn = self.credentials['dsn'],
@@ -16,4 +16,11 @@ class MSSQLReport(DBReport):
             with conn.cursor() as c:
                 c.execute(self.sql)
 
-                self.create_xlsx(c.fetchall(), worksheet_name)
+                if self.report['format'] == "xlsx":
+                    self.create_xlsx(c.fetchall())
+                elif self.report['format'] == "csv":
+                    self.create_csv(c.fetchall())
+                else:
+                    msg = 'Unknown format: %s' % self.report['format']
+                    logging.getLogger().error(msg)
+                    raise AttributeError(msg)

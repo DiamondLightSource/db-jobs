@@ -21,15 +21,16 @@ except ImportError:
 class DBReport():
     """Utility methods to create a report and send it as en email attachment"""
 
-    def __init__(self, working_dir, fileprefix, config_file, db_section, email_section=None, log_level=logging.DEBUG, filesuffix='xlsx'):
+    def __init__(self, config_file, db_section, report_section=None, email_section=None, log_level=logging.DEBUG):
         self.get_parameters()
-        self.working_dir = working_dir
-        self.fileprefix = fileprefix
-        self.filesuffix = filesuffix
         nowstr = str(datetime.now().strftime('%Y%m%d-%H%M%S'))
-        self.filename = '%s%s_%s-%s_%s.%s' % (fileprefix, self.interval, self.start_year, self.start_month, nowstr, filesuffix)
+        self.read_config(config_file, db_section, report_section, email_section)
+        self.working_dir = self.report['directory']
+        self.fileprefix = self.report['file_prefix']
+        self.filesuffix = self.report['file_suffix']
+        nowstr = str(datetime.now().strftime('%Y%m%d-%H%M%S'))
+        self.filename = '%s%s_%s-%s_%s.%s' % (self.fileprefix, self.interval, self.start_year, self.start_month, nowstr, self.filesuffix)
         self.set_logging(log_level)
-        self.read_config(config_file, db_section, email_section)
 
     def get_parameters(self):
         # Get input parameters, otherwise use default values
@@ -71,7 +72,7 @@ class DBReport():
         hdlr.setFormatter(formatter)
         logging.getLogger().addHandler(hdlr)
 
-    def read_config(self, config_file, db_section, email_section=None):
+    def read_config(self, config_file, db_section, report_section=None, email_section=None):
         # Get the database credentials and email settings from the config file:
         configuration_file = os.path.join(sys.path[0], config_file)
         config = configparser.RawConfigParser(allow_no_value=True)
@@ -82,11 +83,19 @@ class DBReport():
 
         self.credentials = None
         if not config.has_section(db_section):
-            msg = 'No "RockMakerDB" section in configuration found at %s' % configuration_file
+            msg = 'No database section in configuration found at %s' % configuration_file
             logging.getLogger().error(msg)
             raise AttributeError(msg)
         else:
             self.credentials = dict(config.items(db_section))
+
+        self.report = None
+        if not config.has_section(report_section):
+            msg = 'No report section in configuration found at %s' % configuration_file
+            logging.getLogger().error(msg)
+            raise AttributeError(msg)
+        else:
+            self.report = dict(config.items(report_section))
 
         self.sender = None
         self.recipients = None
@@ -101,19 +110,19 @@ class DBReport():
 
         return True
 
-    def make_sql(self, sql_template, headers):
+    def make_sql(self):
         """Create proper SQL from the template - merge the headers in as aliases"""
-        self.headers = headers
-        fmt = copy.deepcopy(headers)
+        self.headers = self.report['sql_headers'].split(',')
+        fmt = copy.deepcopy(self.headers)
         fmt.append(self.start_date)
         fmt.append(self.interval)
-        self.sql = sql_template.format(*fmt)
+        self.sql = self.report['sql_template'].format(*fmt)
 
-    def create_xlsx(self, result_set, worksheet_name=None):
+    def create_xlsx(self, result_set):
         filepath = os.path.join(self.working_dir, self.filename)
 
         workbook = xlsxwriter.Workbook(filepath)
-        worksheet = workbook.add_worksheet(worksheet_name)
+        worksheet = workbook.add_worksheet(self.report['worksheet_name'])
 
         bold = workbook.add_format({'bold': True})
         date_format = workbook.add_format({'num_format': 'yyyy-mm-dd hh:mm:ss'})
@@ -159,7 +168,7 @@ class DBReport():
         print(msg)
         logging.getLogger().debug(msg)
 
-    def create_csv(self, result_set, worksheet_name=None):
+    def create_csv(self, result_set):
         filepath = os.path.join(self.working_dir, self.filename)
 
         with open(filepath, 'w') as f:

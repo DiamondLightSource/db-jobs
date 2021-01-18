@@ -4,7 +4,7 @@ import logging
 
 class MariaDBReport(DBReport):
 
-    def create_report(self, worksheet_name=None, format="xlsx"):
+    def create_report(self):
         # Connect to database, create cursor, execute query, write results to xlsx file:
         conn = mysql.connector.connect(host=self.credentials['host'], database=self.credentials['database'], user=self.credentials['user'], password=self.credentials['password'], port=int(self.credentials['port']))
         if conn.is_connected():
@@ -12,12 +12,12 @@ class MariaDBReport(DBReport):
             if c is not None:
                 c.execute(self.sql)
 
-                if format == "xlsx":
-                    self.create_xlsx(c.fetchall(), worksheet_name)
-                elif format == "csv":
-                    self.create_csv(c.fetchall(), worksheet_name)
+                if self.report['format'] == "xlsx":
+                    self.create_xlsx(c.fetchall())
+                elif self.report['format'] == "csv":
+                    self.create_csv(c.fetchall())
                 else:
-                    msg = 'Unknown format: %s' % format
+                    msg = 'Unknown format: %s' % self.report['format']
                     logging.getLogger().error(msg)
                     raise AttributeError(msg)
             conn.disconnect()
