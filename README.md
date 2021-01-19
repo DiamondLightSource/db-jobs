@@ -18,7 +18,7 @@ pip install --user mysql-connector
 
 ## Configuration
 
-Copy the file config.example.cfg to config.cfg and customise it to use your own database credentials and email settings.
+Copy the file `config.example.cfg` to `config.cfg` and customise it to use your own database credentials and email settings.
 
 ## Example usage
 
@@ -37,4 +37,4 @@ You will need:
 - If your database system is not yet supported, extend the DBReport class and implement the `create_report` method. (See `mariadbreport.py` or `mssqlreport.py` for examples.)
 - If you don't have the database credentials yet in the `config.cfg` file, add them to the file under a new section.
 
-See `ispyb_plates_to_xlsx.py` or `rmaker_plates_to_xlsx.py` for examples of how to put it all together.
+See `ispyb_plates_to_xlsx.py` or `rmaker_plates_to_xlsx.py`, and `config.example.cfg`, for examples of how to put it all together.
