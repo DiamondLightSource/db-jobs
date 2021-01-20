@@ -14,4 +14,4 @@ r = MariaDBReport(
 )
 r.make_sql()
 r.create_report()
-# r.send_email("LB samples report", attach_report=False)
+r.send_email("LB samples report", attach_report=False)
