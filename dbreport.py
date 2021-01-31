@@ -11,6 +11,9 @@ from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta, date
 import xlsxwriter
 import sys, os, copy
+import pytds
+import mysql.connector
+import psycopg2
 
 # Trick to make it work with both Python 2 and 3:
 try:
@@ -21,14 +24,18 @@ except ImportError:
 class DBReport():
     """Utility methods to create a report and send it as en email attachment"""
 
-    def __init__(self, config_file, db_section, report_section=None, email_section=None, log_level=logging.DEBUG):
+    def __init__(self, log_level=logging.DEBUG):
         self.get_parameters()
+        if len(sys.argv) <= 1:
+            msg = "No parameters"
+            logging.getLogger().error(msg)
+            raise AttributeError(msg)
+
+        self.read_config(sys.argv[1])
         nowstr = str(datetime.now().strftime('%Y%m%d-%H%M%S'))
-        self.read_config(config_file, db_section, report_section, email_section)
         self.working_dir = self.report['directory']
         self.fileprefix = self.report['file_prefix']
         self.filesuffix = self.report['file_suffix']
-        nowstr = str(datetime.now().strftime('%Y%m%d-%H%M%S'))
         self.filename = '%s%s_%s-%s_%s.%s' % (self.fileprefix, self.interval, self.start_year, self.start_month, nowstr, self.filesuffix)
         self.set_logging(log_level)
 
@@ -40,10 +47,10 @@ class DBReport():
         first = today.replace(day=1)
         prev_date = first - timedelta(days=1)
 
-        if len(sys.argv) > 1:
-            self.interval = sys.argv[1]
+        if len(sys.argv) > 2:
+            self.interval = sys.argv[2]
 
-        if len(sys.argv) >= 1:
+        if len(sys.argv) >= 2:
             if self.interval == 'month':
                 self.start_year = prev_date.year
                 self.start_month = prev_date.month
@@ -55,10 +62,10 @@ class DBReport():
                 logging.getLogger().error(err_msg)
                 raise AttributeError(err_msg)
 
-            if len(sys.argv) > 2:
-                self.start_year = sys.argv[2]  # e.g. 2018
-                if len(sys.argv) > 3:
-                    self.start_month = sys.argv[3] # e.g. 02
+            if len(sys.argv) > 3:
+                self.start_year = sys.argv[3]  # e.g. 2018
+                if len(sys.argv) > 4:
+                    self.start_month = sys.argv[4] # e.g. 02
 
         self.start_date = '%s/%s/01' % (self.start_year, self.start_month)
 
@@ -72,41 +79,24 @@ class DBReport():
         hdlr.setFormatter(formatter)
         logging.getLogger().addHandler(hdlr)
 
-    def read_config(self, config_file, db_section, report_section=None, email_section=None):
+    def read_config(self, report):
         # Get the database credentials and email settings from the config file:
-        configuration_file = os.path.join(sys.path[0], config_file)
+        configuration_file = os.path.join(sys.path[0], "config.cfg")
         config = configparser.RawConfigParser(allow_no_value=True)
         if not config.read(configuration_file):
             msg = 'No configuration found at %s' % configuration_file
             logging.getLogger().error(msg)
             raise AttributeError(msg)
 
-        self.credentials = None
-        if not config.has_section(db_section):
-            msg = 'No database section in configuration found at %s' % configuration_file
-            logging.getLogger().error(msg)
-            raise AttributeError(msg)
-        else:
-            self.credentials = dict(config.items(db_section))
-
         self.report = None
-        if not config.has_section(report_section):
-            msg = 'No report section in configuration found at %s' % configuration_file
+        if not config.has_section(report):
+            msg = 'No section %s in configuration found at %s' % (report, configuration_file)
             logging.getLogger().error(msg)
             raise AttributeError(msg)
         else:
-            self.report = dict(config.items(report_section))
-
-        self.sender = None
-        self.recipients = None
-        if email_section is None or not config.has_section(email_section):
-            msg = 'No "%s" section in configuration found at %s' % (email_section, configuration_file)
-            logging.getLogger().error(msg)
-            raise AttributeError(msg)
-        else:
-            email_settings = dict(config.items(email_section))
-            self.sender = email_settings['sender']
-            self.recipients = email_settings['recipients']
+            self.report = dict(config.items(report))
+            self.sender = self.report['sender']
+            self.recipients = self.report['recipients']
 
         return True
 
@@ -117,6 +107,74 @@ class DBReport():
         fmt.append(self.start_date)
         fmt.append(self.interval)
         self.sql = self.report['sql_template'].format(*fmt)
+
+    def create_report(self):
+        if self.report["dbtype"] == "MariaDB":
+            self.create_mariadb_report()
+        elif self.report["dbtype"] == "MSSQL":
+            self.create_mssql_report()
+        elif self.report["dbtype"] == "PostgreSQL":
+            self.create_postgresql_report()
+        else:
+            msg = "Unknown dbtype: %s" % self.report["dbtype"]
+            logging.getLogger().error(msg)
+            raise AttributeError(msg)
+
+    def create_mariadb_report(self):
+        # Connect to database, create cursor, execute query, write results to xlsx file:
+        conn = mysql.connector.connect(host=self.report['host'], database=self.report['database'], user=self.report['user'], password=self.report['password'], port=int(self.report['port']))
+        if conn.is_connected():
+            c = conn.cursor(dictionary=True)
+            if c is not None:
+                c.execute(self.sql)
+
+                if self.report['format'] == "xlsx":
+                    self.create_xlsx(c.fetchall())
+                elif self.report['format'] == "csv":
+                    self.create_csv(c.fetchall())
+                else:
+                    msg = 'Unknown format: %s' % self.report['format']
+                    logging.getLogger().error(msg)
+                    raise AttributeError(msg)
+            conn.disconnect()
+
+    def create_mssql_report(self):
+        # Connect to database, create cursor, execute query, write results to xlsx file:
+        with pytds.connect(
+            dsn = self.report['dsn'],
+            database = self.report['database'],
+            user = self.report['user'],
+            password = self.report['password'],
+            as_dict = True
+            ) as conn:
+            with conn.cursor() as c:
+                c.execute(self.sql)
+
+                if self.report['format'] == "xlsx":
+                    self.create_xlsx(c.fetchall())
+                elif self.report['format'] == "csv":
+                    self.create_csv(c.fetchall())
+                else:
+                    msg = 'Unknown format: %s' % self.report['format']
+                    logging.getLogger().error(msg)
+                    raise AttributeError(msg)
+
+    def create_postgresql_report(self):
+        # Connect to database, create cursor, execute query, write results to xlsx file:
+        with psycopg2.connect(host=self.report['host'], dbname=self.report['dbname'], user=self.report['user'], password=self.report['password'], port=int(self.report['port'])) as conn:
+            conn.set_session(readonly=True, autocommit=True)
+            if not conn.closed:
+                with conn.cursor(dictionary=True) as c:
+                    if c is not None:
+                        c.execute(self.sql)
+                        if self.report['format'] == "xlsx":
+                            self.create_xlsx(c.fetchall())
+                        elif self.report['format'] == "csv":
+                            self.create_csv(c.fetchall())
+                        else:
+                            msg = 'Unknown format: %s' % self.report['format']
+                            logging.getLogger().error(msg)
+                            raise AttributeError(msg)
 
     def create_xlsx(self, result_set):
         filepath = os.path.join(self.working_dir, self.filename)
@@ -202,7 +260,11 @@ class DBReport():
         logging.getLogger().debug(msg)
 
 
-    def send_email(self, report_name, attach_report=True):
+    def send_email(self):
+        report_name = self.report["fullname"]
+        attach_report = True
+        if self.report["attach"].lower() == "no":
+            attach_report = False
         if self.working_dir is not None and self.filename is not None and self.sender is not None and self.recipients is not None:
             filepath = os.path.join(self.working_dir, self.filename)
 
