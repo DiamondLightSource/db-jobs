@@ -14,6 +14,7 @@
 pip install --user XlsxWriter
 pip install --user python-tds
 pip install --user mysql-connector
+pip install --user psycopg2
 ```
 
 ## Configuration
@@ -24,17 +25,18 @@ Copy the file `config.example.cfg` to `config.cfg` and customise it to use your 
 
 ```bash
 # report on plates and imagings from a RockMaker database
-python rmaker_plates_to_xlsx.py month 2018 10
+python runreport.py RockMakerPlateReport month 2018 10
 # report on plates and imagings from an ISPyB database
-python ispyb_plates_to_xlsx.py month 2018 09
+python runreport.py ISPyBPlatesReport month 2018 09
 ```
 
 ## Developing new reports
 
-You will need:
+You will need to add this to your 'config.cfg' file:
 - An SQL template string for your database query
 - A list with the column headers you want to use in the report
-- If your database system is not yet supported, extend the DBReport class and implement the `create_report` method. (See `mariadbreport.py` or `mssqlreport.py` for examples.)
-- If you don't have the database credentials yet in the `config.cfg` file, add them to the file under a new section.
+- The database credentials
 
-See `ispyb_plates_to_xlsx.py` or `rmaker_plates_to_xlsx.py`, and `config.example.cfg`, for examples of how to put it all together.
+If your database system is not yet supported, amend the `create_report` in the DBReport class.
+
+See the report sections in `config.example.cfg` for examples of how to put it all together.
