@@ -80,23 +80,41 @@ class DBReport():
         logging.getLogger().addHandler(hdlr)
 
     def read_config(self, report):
-        # Get the database credentials and email settings from the config file:
-        configuration_file = os.path.join(sys.path[0], "config.cfg")
-        config = configparser.RawConfigParser(allow_no_value=True)
-        if not config.read(configuration_file):
-            msg = 'No configuration found at %s' % configuration_file
+        """Read the report configuration, email settings and database
+        credentials from the reports.cfg and datasources.cfg config files:"""
+        reports_file = os.path.join(sys.path[0], "reports.cfg")
+        reports = configparser.RawConfigParser(allow_no_value=True)
+        if not reports.read(reports_file):
+            msg = 'No configuration found at %s' % reports_file
             logging.getLogger().error(msg)
             raise AttributeError(msg)
 
         self.report = None
-        if not config.has_section(report):
-            msg = 'No section %s in configuration found at %s' % (report, configuration_file)
+        datasource_section = None
+        if not reports.has_section(report):
+            msg = 'No section %s in configuration found at %s' % (report, reports_file)
             logging.getLogger().error(msg)
             raise AttributeError(msg)
         else:
-            self.report = dict(config.items(report))
+            self.report = dict(reports.items(report))
             self.sender = self.report['sender']
             self.recipients = self.report['recipients']
+            datasource_section = self.report['datasource']
+
+        datasources_file = os.path.join(sys.path[0], "datasources.cfg")
+        datasources = configparser.RawConfigParser(allow_no_value=True)
+        if not datasources.read(datasources_file):
+            msg = 'No configuration found at %s' % datasources_file
+            logging.getLogger().error(msg)
+            raise AttributeError(msg)
+
+        self.datasource = None
+        if not datasources.has_section(datasource_section):
+            msg = 'No section %s in configuration found at %s' % (datasource_section, datasources_file)
+            logging.getLogger().error(msg)
+            raise AttributeError(msg)
+        else:
+            self.datasource = dict(datasources.items(datasource_section))
 
         return True
 
@@ -109,20 +127,20 @@ class DBReport():
         self.sql = self.report['sql_template'].format(*fmt)
 
     def create_report(self):
-        if self.report["dbtype"] == "MariaDB":
+        if self.datasource["dbtype"] == "MariaDB":
             self.create_mariadb_report()
-        elif self.report["dbtype"] == "MSSQL":
+        elif self.datasource["dbtype"] == "MSSQL":
             self.create_mssql_report()
-        elif self.report["dbtype"] == "PostgreSQL":
+        elif self.datasource["dbtype"] == "PostgreSQL":
             self.create_postgresql_report()
         else:
-            msg = "Unknown dbtype: %s" % self.report["dbtype"]
+            msg = "Unknown dbtype: %s" % self.datasource["dbtype"]
             logging.getLogger().error(msg)
             raise AttributeError(msg)
 
     def create_mariadb_report(self):
         # Connect to database, create cursor, execute query, write results to xlsx file:
-        conn = mysql.connector.connect(host=self.report['host'], database=self.report['database'], user=self.report['user'], password=self.report['password'], port=int(self.report['port']))
+        conn = mysql.connector.connect(host=self.datasource['host'], database=self.datasource['database'], user=self.datasource['user'], password=self.datasource['password'], port=int(self.datasource['port']))
         if conn.is_connected():
             c = conn.cursor(dictionary=True)
             if c is not None:
@@ -141,10 +159,10 @@ class DBReport():
     def create_mssql_report(self):
         # Connect to database, create cursor, execute query, write results to xlsx file:
         with pytds.connect(
-            dsn = self.report['dsn'],
-            database = self.report['database'],
-            user = self.report['user'],
-            password = self.report['password'],
+            dsn = self.datasource['dsn'],
+            database = self.datasource['database'],
+            user = self.datasource['user'],
+            password = self.datasource['password'],
             as_dict = True
             ) as conn:
             with conn.cursor() as c:
@@ -161,7 +179,7 @@ class DBReport():
 
     def create_postgresql_report(self):
         # Connect to database, create cursor, execute query, write results to xlsx file:
-        with psycopg2.connect(host=self.report['host'], dbname=self.report['dbname'], user=self.report['user'], password=self.report['password'], port=int(self.report['port'])) as conn:
+        with psycopg2.connect(host=self.datasource['host'], dbname=self.datasource['dbname'], user=self.datasource['user'], password=self.datasource['password'], port=int(self.datasource['port'])) as conn:
             conn.set_session(readonly=True, autocommit=True)
             if not conn.closed:
                 with conn.cursor(dictionary=True) as c:
