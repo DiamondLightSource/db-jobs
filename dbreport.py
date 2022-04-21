@@ -80,8 +80,25 @@ class DBReport():
         logging.getLogger().addHandler(hdlr)
 
     def read_config(self, report):
-        """Read the report configuration, email settings and database
-        credentials from the reports.cfg and datasources.cfg config files:"""
+        """Read the email settings, report configuration and DB credentials from
+        the config.cfg, reports.cfg and datasources.cfg config files"""
+
+        config_file = os.path.join(sys.path[0], "config.cfg")
+        config = configparser.RawConfigParser(allow_no_value=True)
+        if not config.read(config_file):
+            msg = 'No configuration found at %s' % config_file
+            logging.getLogger().error(msg)
+            raise AttributeError(msg)
+
+        if not config.has_section(report):
+            msg = 'No section %s in configuration found at %s' % (report, config_file)
+            logging.getLogger().error(msg)
+            raise AttributeError(msg)
+        else:
+            mailsettings = dict(config.items(report))
+            self.sender = mailsettings['sender']
+            self.recipients = mailsettings['recipients']
+
         reports_file = os.path.join(sys.path[0], "reports.cfg")
         reports = configparser.RawConfigParser(allow_no_value=True)
         if not reports.read(reports_file):
@@ -97,8 +114,6 @@ class DBReport():
             raise AttributeError(msg)
         else:
             self.report = dict(reports.items(report))
-            self.sender = self.report['sender']
-            self.recipients = self.report['recipients']
             datasource_section = self.report['datasource']
 
         datasources_file = os.path.join(sys.path[0], "datasources.cfg")
