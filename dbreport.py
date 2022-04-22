@@ -33,7 +33,7 @@ class DBReport():
 
         self.read_config(sys.argv[1])
         nowstr = str(datetime.now().strftime('%Y%m%d-%H%M%S'))
-        self.working_dir = self.report['directory']
+        self.working_dir = self.config['directory']
         self.fileprefix = self.report['file_prefix']
         self.filesuffix = self.report['file_suffix']
         self.filename = '%s%s_%s-%s_%s.%s' % (self.fileprefix, self.interval, self.start_year, self.start_month, nowstr, self.filesuffix)
@@ -79,57 +79,33 @@ class DBReport():
         hdlr.setFormatter(formatter)
         logging.getLogger().addHandler(hdlr)
 
-    def read_config(self, report):
-        """Read the email settings, report configuration and DB credentials from
-        the config.cfg, reports.cfg and datasources.cfg config files"""
-
-        config_file = os.path.join(sys.path[0], "config.cfg")
+    def get_section_items(self, conf_file, conf_section):
+        config_file = os.path.join(sys.path[0], conf_file)
         config = configparser.RawConfigParser(allow_no_value=True)
         if not config.read(config_file):
             msg = 'No configuration found at %s' % config_file
             logging.getLogger().error(msg)
             raise AttributeError(msg)
 
-        if not config.has_section(report):
-            msg = 'No section %s in configuration found at %s' % (report, config_file)
-            logging.getLogger().error(msg)
-            raise AttributeError(msg)
-        else:
-            mailsettings = dict(config.items(report))
-            self.sender = mailsettings['sender']
-            self.recipients = mailsettings['recipients']
-
-        reports_file = os.path.join(sys.path[0], "reports.cfg")
-        reports = configparser.RawConfigParser(allow_no_value=True)
-        if not reports.read(reports_file):
-            msg = 'No configuration found at %s' % reports_file
+        if not config.has_section(conf_section):
+            msg = 'No section %s in configuration found at %s' % (conf_section, config_file)
             logging.getLogger().error(msg)
             raise AttributeError(msg)
 
-        self.report = None
-        datasource_section = None
-        if not reports.has_section(report):
-            msg = 'No section %s in configuration found at %s' % (report, reports_file)
-            logging.getLogger().error(msg)
-            raise AttributeError(msg)
-        else:
-            self.report = dict(reports.items(report))
-            datasource_section = self.report['datasource']
+        return dict(config.items(conf_section))
 
-        datasources_file = os.path.join(sys.path[0], "datasources.cfg")
-        datasources = configparser.RawConfigParser(allow_no_value=True)
-        if not datasources.read(datasources_file):
-            msg = 'No configuration found at %s' % datasources_file
-            logging.getLogger().error(msg)
-            raise AttributeError(msg)
+    def read_config(self, report_section):
+        """Read the email settings, report configuration and DB credentials from
+        the config.cfg, reports.cfg and datasources.cfg config files"""
 
-        self.datasource = None
-        if not datasources.has_section(datasource_section):
-            msg = 'No section %s in configuration found at %s' % (datasource_section, datasources_file)
-            logging.getLogger().error(msg)
-            raise AttributeError(msg)
-        else:
-            self.datasource = dict(datasources.items(datasource_section))
+        self.config = self.get_section_items("config.cfg", report_section)
+        self.sender = self.config['sender']
+        self.recipients = self.config['recipients']
+
+        self.report = self.get_section_items("reports.cfg", report_section)
+        ds_section = self.report['datasource']
+
+        self.datasource = self.get_section_items("datasources.cfg", ds_section)
 
         return True
 
@@ -296,7 +272,7 @@ class DBReport():
     def send_email(self):
         report_name = self.report["fullname"]
         attach_report = True
-        if self.report["attach"].lower() == "no":
+        if self.config["attach"].lower() == "no":
             attach_report = False
         if self.working_dir is not None and self.filename is not None and self.sender is not None and self.recipients is not None:
             filepath = os.path.join(self.working_dir, self.filename)
