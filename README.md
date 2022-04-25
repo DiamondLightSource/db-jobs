@@ -19,14 +19,20 @@ pip install --user psycopg2
 
 ## Configuration
 
-Copy the files `config.example.cfg` to `config.cfg` and `datasources.example.cfg` to `datasources.cfg`, then customise them to use your own database credentials and email settings.
+Copy the files `*.example.cfg` files to just `*.cfg`:
+
+ * `config.example.cfg` to `config.cfg`
+ * `reports.example.cfg` to `reports.cfg`
+ * `datasources.example.cfg` to `datasources.cfg`
+
+Then customise them to use your own database credentials, database queries and email settings.
 
 ## Example usage
 
 ```bash
-# report on plates and imagings from a RockMaker database
+# Report on plates and imagings from a RockMaker database
 python runreport.py RockMakerPlateReport month 2018 10
-# report on plates and imagings from an ISPyB database
+# Report on plates and imagings from an ISPyB database
 python runreport.py ISPyBPlatesReport month 2018 09
 ```
 
@@ -38,6 +44,6 @@ You will need to add this to the 'reports.cfg' file:
 
 You also need to add database credentials to the `datasources.cfg` file and email settings to the `config.cfg` file.
 
-If your database system is not yet supported, amend the `create_report` in the DBReport class.
+If your database system is not yet supported, then you need to amend the `create_report` in the `DBReport` class.
 
-See the .cfg files for examples.
+See also the *.example.cfg files for examples.
