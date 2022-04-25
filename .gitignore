@@ -1,6 +1,7 @@
 # Custom files
 config.cfg
 datasources.cfg
+reports.cfg
 .idea/
 
 # Byte-compiled / optimized / DLL files
