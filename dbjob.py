@@ -5,9 +5,19 @@ import logging
 from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta, date
 import sys, os, copy
-import pytds
-import mysql.connector
-import psycopg2
+try:
+    import pytds
+except ImportError:
+    pytds = None
+try:
+    import mysql.connector
+except ImportError:
+    mysql = None
+try:
+    import psycopg2
+except ImportError:
+    psycopg2 = None
+
 
 # Trick to make it work with both Python 2 and 3:
 try:
@@ -49,6 +59,11 @@ class DBJob():
     def run_mariadb_job(self):
         """Connect to database, create cursor, execute query, disconnect, return
         result set."""
+
+        if mysql is None:
+            logging.getLogger().error("mysql.connector not found")
+            sys.exit(1)
+
         rs = None
         conn = mysql.connector.connect(host=self.datasource['host'],
             database=self.datasource['database'], 
@@ -68,6 +83,11 @@ class DBJob():
     def run_mssql_job(self):
         """Connect to database, create cursor, execute query, disconnect, return
         result set."""
+
+        if pytds is None:
+            logging.getLogger().error("pytds not found")
+            sys.exit(1)
+
         rs = None
         with pytds.connect(
             dsn = self.datasource['dsn'],
@@ -85,8 +105,18 @@ class DBJob():
     def run_postgresql_job(self):
         """Connect to database, create cursor, execute query, disconnect, return
         result set."""
+
+        if psycopg2 is None:
+            logging.getLogger().error("psycopg2 not found")
+            sys.exit(1)
+
         rs = None
-        with psycopg2.connect(host=self.datasource['host'], dbname=self.datasource['dbname'], user=self.datasource['user'], password=self.datasource['password'], port=int(self.datasource['port'])) as conn:
+        with psycopg2.connect(host=self.datasource['host'],
+            dbname=self.datasource['dbname'],
+            user=self.datasource['user'],
+            password=self.datasource['password'],
+            port=int(self.datasource['port'])
+        ) as conn:
             conn.set_session(readonly=True, autocommit=True)
             if not conn.closed:
                 with conn.cursor(dictionary=True) as c:
@@ -95,7 +125,6 @@ class DBJob():
                         if self.job['sql_type'] in ('read', 'read-write'):
                             rs = c.fetchall()
         return rs
-
 
     def set_logging(self, level=None, filepath=None):
         """Configure logging"""
