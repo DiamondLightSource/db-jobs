@@ -5,9 +5,7 @@
 from dbreport import DBReport
 import logging
 
-import sys
-
 r = DBReport(log_level=logging.DEBUG)
 r.make_sql()
-r.create_report()
+r.run_job()
 r.send_email()

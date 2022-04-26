@@ -22,7 +22,7 @@ pip install --user psycopg2
 Copy the files `*.example.cfg` files to just `*.cfg`:
 
  * `config.example.cfg` to `config.cfg`
- * `reports.example.cfg` to `reports.cfg`
+ * `jobs.example.cfg` to `jobs.cfg`
  * `datasources.example.cfg` to `datasources.cfg`
 
 Then customise them to use your own database credentials, database queries and email settings.
@@ -38,7 +38,7 @@ python runreport.py ISPyBPlatesReport month 2018 09
 
 ## Developing new reports
 
-You will need to add this to the 'reports.cfg' file:
+You will need to add this to the 'jobs.cfg' file:
 - An SQL template string for your database query
 - A list with the column headers you want to use in the report
 
