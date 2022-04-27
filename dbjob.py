@@ -2,6 +2,7 @@
 # Copyright 2022 Karl Levik
 #
 import logging
+import atexit
 from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta, date
 import sys, os, copy
@@ -36,11 +37,17 @@ class DBJob():
             raise AttributeError(msg)
 
         self.read_config(sys.argv[1])
-        nowstr = str(datetime.now().strftime('%Y%m%d-%H%M%S'))
         self.working_dir = self.config['directory']
         self.fileprefix = self.job['file_prefix']
         self.set_logging(level = log_level, filepath = os.path.join(self.working_dir, '%s.log' % self.fileprefix))
+        logging.getLogger().info("DBJob %s started" % self.job['fullname'])
+        atexit.register(self.clean_up)
         self.sql = self.job['sql']
+
+    def clean_up(self):
+        if hasattr(self, 'job'):
+            logging.getLogger().info("DBJob %s completed" % self.job['fullname'])
+            logging.shutdown()
 
     def run_job(self):
         rs = None

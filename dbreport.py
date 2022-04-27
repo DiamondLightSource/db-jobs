@@ -25,16 +25,10 @@ class DBReport(DBJob):
     """Utility methods to create a report and send it as en email attachment"""
 
     def __init__(self, log_level=logging.DEBUG):
+        super().__init__(log_level=log_level)
         self.get_parameters()
-        if len(sys.argv) <= 1:
-            msg = "No parameters"
-            logging.getLogger().error(msg)
-            raise AttributeError(msg)
 
-        self.read_config(sys.argv[1])
         nowstr = str(datetime.now().strftime('%Y%m%d-%H%M%S'))
-        self.working_dir = self.config['directory']
-        self.fileprefix = self.job['file_prefix']
         self.filesuffix = self.job['file_suffix']
         self.filename = '%s%s_%s-%s_%s%s' % (self.fileprefix, self.interval, self.start_year, self.start_month, nowstr, self.filesuffix)
         self.set_logging(level = log_level, filepath = os.path.join(self.working_dir, '%s%s_%s-%s.log' % (self.fileprefix, self.interval, self.start_year, self.start_month)))
