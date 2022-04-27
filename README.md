@@ -2,11 +2,11 @@
 
 ## Features
 
-- Reads config file
-- Reads command-line arguments
-- Queries the database to get a result set
-- Writes the query result set to a spreadsheet file (.xlsx or .csv)
-- If recipient email addresses are defined in the config file, then emails the spreadsheet as an attachment (or just a path name, depending on your configuration).
+- Reads config files
+- Can read command-line arguments
+- Runs SQL statements/queries and can get a result set
+- Can writes the result set to a spreadsheet file (.xlsx or .csv)
+- Can email the spreadsheet as an attachment, or just a path name, if recipient email addresses are defined in the config file.
 
 ## Installing dependencies
 
@@ -16,6 +16,9 @@ pip install --user python-tds
 pip install --user mysql-connector
 pip install --user psycopg2
 ```
+`python-tds` is a connector for Microsoft SQL Server, `mysql-connector` is a connector that works with MySQL and MariaDB, and `psycopg2` is a connector for PostgreSQL.
+
+You only need the database connector(s) for the database system type(s) that you intend to use.
 
 ## Configuration
 
