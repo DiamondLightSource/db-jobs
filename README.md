@@ -1,4 +1,6 @@
-# Database reporting scripts
+# db-jobs
+
+This is a Python project for running database queries/statements and generating reports.
 
 ## Features
 
