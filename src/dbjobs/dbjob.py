@@ -5,7 +5,8 @@ import logging
 import atexit
 from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta, date
-import sys, os, copy
+import sys, os, copy, os.path
+from dbjobs.base import Base
 try:
     import pytds
 except ImportError:
@@ -19,27 +20,20 @@ try:
 except ImportError:
     psycopg2 = None
 
+import configparser
 
-# Trick to make it work with both Python 2 and 3:
-try:
-  import configparser
-except ImportError:
-  import ConfigParser as configparser
-
-class DBJob():
+class DBJob(Base):
     """Utility methods to execute a database query with logging based on 
     configuration and command-line parameters"""
 
-    def __init__(self, log_level=logging.DEBUG):
-        if len(sys.argv) <= 1:
-            msg = "No parameters"
-            logging.getLogger().error(msg)
-            raise AttributeError(msg)
+    def __init__(self, job_section=None, conf_dir=None, log_level=logging.DEBUG):
+        if job_section is None:
+            self.error("Job section is required.")
 
-        self.read_config(sys.argv[1])
+        self.read_config(job_section, conf_dir)
         self.working_dir = self.config['directory']
         self.fileprefix = self.job['file_prefix']
-        self.set_logging(level = log_level, filepath = os.path.join(self.working_dir, '%s.log' % self.fileprefix))
+        self.set_logging(level = log_level, filepath = os.path.join(self.working_dir, f"{self.fileprefix}.log"))
         logging.getLogger().info("DBJob %s started" % self.job['fullname'])
         atexit.register(self.clean_up)
         self.sql = self.job['sql']
@@ -157,13 +151,22 @@ class DBJob():
 
         return dict(config.items(conf_section))
 
-    def read_config(self, job_section):
+    def read_config(self, job_section, conf_dir=None):
         """Read the email settings, job configuration and DB credentials from
         the config.cfg, reports.cfg and datasources.cfg config files"""
 
-        self.config = self.get_section_items("config.cfg", job_section)
-        self.job = self.get_section_items("jobs.cfg", job_section)
+        conf_file = "config.cfg"
+        jobs_file = "jobs.cfg"
+        ds_file = "datasources.cfg"
+
+        if conf_dir:
+            conf_file = os.path.join(conf_dir, conf_file)
+            jobs_file = os.path.join(conf_dir, jobs_file)
+            ds_file = os.path.join(conf_dir, ds_file)
+
+        self.config = self.get_section_items(conf_file, job_section)
+        self.job = self.get_section_items(jobs_file, job_section)
         ds_section = self.job['datasource']
-        self.datasource = self.get_section_items("datasources.cfg", ds_section)
+        self.datasource = self.get_section_items(ds_file, ds_section)
 
         return True

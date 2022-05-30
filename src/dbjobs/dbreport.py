@@ -13,67 +13,61 @@ import sys, os, copy
 import pytds
 import mysql.connector
 import psycopg2
-from dbjob import DBJob
+from dbjobs.dbjob import DBJob
 
-# Trick to make it work with both Python 2 and 3:
-try:
-  import configparser
-except ImportError:
-  import ConfigParser as configparser
+import configparser
 
 class DBReport(DBJob):
     """Utility methods to create a report and send it as en email attachment"""
 
-    def __init__(self, log_level=logging.DEBUG):
-        super().__init__(log_level=log_level)
-        self.get_parameters()
-
-        nowstr = str(datetime.now().strftime('%Y%m%d-%H%M%S'))
+    def __init__(self, job_section=None, conf_dir=None, log_level=logging.DEBUG):
+        super().__init__(job_section=job_section, conf_dir=conf_dir, log_level=log_level)
         self.filesuffix = self.job['file_suffix']
-        self.filename = '%s%s_%s-%s_%s%s' % (self.fileprefix, self.interval, self.start_year, self.start_month, nowstr, self.filesuffix)
-        self.set_logging(level = log_level, filepath = os.path.join(self.working_dir, '%s%s_%s-%s.log' % (self.fileprefix, self.interval, self.start_year, self.start_month)))
 
-    def get_parameters(self):
+    def get_start_date(self, interval=None, start_year=None, start_month=None):
         # Get input parameters, otherwise use default values
-        self.interval = 'month'
-
         today = date.today()
         first = today.replace(day=1)
         prev_date = first - timedelta(days=1)
 
-        if len(sys.argv) > 2:
-            self.interval = sys.argv[2]
+        if interval:
+            self.interval = interval
+        else:
+            self.interval = "month"
 
-        if len(sys.argv) >= 2:
-            if self.interval == 'month':
-                self.start_year = prev_date.year
-                self.start_month = prev_date.month
-            elif self.interval == 'year':
-                self.start_year = prev_date.year - 1
-                self.start_month = prev_date.month
-            else:
-                err_msg = 'interval must be "month" or "year"'
-                logging.getLogger().error(err_msg)
-                raise AttributeError(err_msg)
+        if self.interval == "month": 
+            self.start_year = prev_date.year
+            self.start_month = prev_date.month
 
-            if len(sys.argv) > 3:
-                self.start_year = sys.argv[3]  # e.g. 2018
-                if len(sys.argv) > 4:
-                    self.start_month = sys.argv[4] # e.g. 02
+        elif self.interval == "year":
+            self.start_year = prev_date.year - 1
+            self.start_month = prev_date.month
 
-        self.start_date = '%s/%s/01' % (self.start_year, self.start_month)
+        else:
+            self.error('interval must be "month" or "year"')
+        
+        if start_year:
+            self.start_year = start_year
+        if start_month:
+            self.start_month = start_month
 
-    def read_config(self, job_section):
-        super().read_config(job_section)
+        return f'{self.start_year}/{self.start_month}/01'
+
+    def read_config(self, job_section, conf_dir):
+        super().read_config(job_section, conf_dir=conf_dir)
         self.sender = self.config['sender']
         self.recipients = self.config['recipients']
 
-    def make_sql(self):
+    def make_sql(self, interval, start_year, start_month):
         """Create proper SQL from the template - merge the headers in as aliases"""
         self.headers = self.job['sql_headers'].split(',')
         fmt = copy.deepcopy(self.headers)
+
+        self.start_date = self.get_start_date(interval, start_year, start_month)
         fmt.append(self.start_date)
-        fmt.append(self.interval)
+        fmt.append(interval)
+        nowstr = str(datetime.now().strftime('%Y%m%d-%H%M%S'))
+        self.filename = '%s%s_%s-%s_%s%s' % (self.fileprefix, interval, start_year, start_month, nowstr, self.filesuffix)
         self.sql = self.job['sql'].format(*fmt)
 
     def run_job(self):
@@ -171,7 +165,7 @@ class DBReport(DBJob):
         logging.getLogger().debug(msg)
 
 
-    def send_email(self):
+    def send_email(self, subject):
         report_name = self.job["fullname"]
         attach_report = True
         if self.config["attach"].lower() == "no":
@@ -180,7 +174,7 @@ class DBReport(DBJob):
             filepath = os.path.join(self.working_dir, self.filename)
 
             message = MIMEMultipart()
-            message['Subject'] = '%s for %s starting %s' % (report_name, self.interval, self.start_date)
+            message['Subject'] = subject
             message['From'] = self.sender
             message['To'] = self.recipients
 
