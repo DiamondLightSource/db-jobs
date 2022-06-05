@@ -67,7 +67,7 @@ class DBReport(DBJob):
         fmt.append(self.start_date)
         fmt.append(interval)
         nowstr = str(datetime.now().strftime('%Y%m%d-%H%M%S'))
-        self.filename = '%s%s_%s-%s_%s%s' % (self.fileprefix, interval, start_year, start_month, nowstr, self.filesuffix)
+        self.filename = '%s%s_%s-%s_%s%s' % (self.fileprefix, self.interval, self.start_year, self.start_month, nowstr, self.filesuffix)
         self.sql = self.job['sql'].format(*fmt)
 
     def run_job(self):
