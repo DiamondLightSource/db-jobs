@@ -10,9 +10,6 @@ import logging
 from datetime import datetime, timedelta, date
 import xlsxwriter
 import sys, os, copy
-import pytds
-import mysql.connector
-import psycopg2
 from dbjobs.dbjob import DBJob
 
 import configparser
