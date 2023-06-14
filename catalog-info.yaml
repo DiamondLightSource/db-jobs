@@ -1,0 +1,19 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: db-jobs
+  title: db-jobs
+  description: Runs DB query, optionally generates xlsx/csv output and attaches it to email  
+  annotations:
+    github.com/project-slug: DiamondLightSource/db-jobs
+    diamond.ac.uk/viewdocs-url: https://confluence.diamond.ac.uk/x/C2tRBQ
+  tags:
+    - python
+    - sql
+    - database
+spec:
+  type: service
+  lifecycle: production
+  owner: group:lims
+  dependsOn:
+    - resource:ispyb-database
