@@ -36,9 +36,9 @@ Then customise them to use your own database credentials, database queries and e
 
 ```bash
 # Report on plates and imagings from a RockMaker database
-python runreport.py RockMakerPlateReport month 2018 10
+python runreport.py RockMakerPlateReport -m 10 -y 2018
 # Report on plates and imagings from an ISPyB database
-python runreport.py ISPyBPlatesReport month 2018 09
+python runreport.py ISPyBPlatesReport - m 9 -y 2018
 ```
 
 ## Developing new reports
