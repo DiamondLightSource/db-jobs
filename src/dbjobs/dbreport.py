@@ -8,6 +8,7 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 import logging
 from datetime import datetime, timedelta, date
+from calendar import monthrange
 import xlsxwriter
 import sys, os, copy
 from dbjobs.dbjob import DBJob
@@ -21,46 +22,69 @@ class DBReport(DBJob):
         super().__init__(job_section=job_section, conf_dir=conf_dir, log_level=log_level)
         self.filesuffix = self.job['file_suffix']
 
-    def get_start_date(self, interval=None, start_year=None, start_month=None):
+    def get_start_date(self, interval=None, start_year=None, start_month=None, start_day=None):
         # Get input parameters, otherwise use default values
-        today = date.today()
-        first = today.replace(day=1)
-        prev_date = first - timedelta(days=1)
 
         if interval:
             self.interval = interval
         else:
             self.interval = "month"
 
-        if self.interval == "month": 
-            self.start_year = prev_date.year
-            self.start_month = prev_date.month
+        if not start_day:
+            today = date.today()
+            first = today.replace(day=1)
+            prev_date = first - timedelta(days=1)
 
-        elif self.interval == "year":
-            self.start_year = prev_date.year - 1
-            self.start_month = prev_date.month
+            if self.interval == "month":
+                self.start_year = prev_date.year
+                self.start_month = prev_date.month
+                self.start_day = prev_date.day
+            elif self.interval == "year":
+                self.start_year = prev_date.year - 1
+                self.start_month = prev_date.month
+                self.start_day = prev_date.day
+            else:
+                self.error('interval must be "month" or "year"')
 
         else:
-            self.error('interval must be "month" or "year"')
-        
+            today = date.today()
+            if interval == "month":
+                d = monthrange(today.year, today.month)[1]
+                delta = timedelta(days=d)
+            elif interval == "year":
+                d = monthrange(today.year, 2)[1] # get number of days in Feb
+                delta = timedelta(days=337 + d)
+            else:
+                self.error('interval must be "month" or "year"')
+
+            prev_date = today - delta
+
+            self.start_year = prev_date.year
+            self.start_month = prev_date.month
+            self.start_day = prev_date.day
+
         if start_year:
             self.start_year = start_year
         if start_month:
             self.start_month = start_month
+        if start_day:
+            self.start_day = start_day
+        else:
+            self.start_day = 1
 
-        return f'{self.start_year}/{self.start_month}/01'
+        return f'{self.start_year}/{self.start_month}/{self.start_day}'
 
     def read_config(self, job_section, conf_dir):
         super().read_config(job_section, conf_dir=conf_dir)
         self.sender = self.config['sender']
         self.recipients = self.config['recipients']
 
-    def make_sql(self, interval, start_year, start_month):
+    def make_sql(self, interval, start_year, start_month, start_day):
         """Create proper SQL from the template - merge the headers in as aliases"""
         self.headers = self.job['sql_headers'].split(',')
         fmt = copy.deepcopy(self.headers)
 
-        self.start_date = self.get_start_date(interval, start_year, start_month)
+        self.start_date = self.get_start_date(interval, start_year, start_month, start_day)
         fmt.append(self.start_date)
         fmt.append(self.interval)
         nowstr = str(datetime.now().strftime('%Y%m%d-%H%M%S'))
